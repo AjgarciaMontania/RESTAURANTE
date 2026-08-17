@@ -1,0 +1,9 @@
+{
+  "appId": "com.restaurante.pedidos",
+  "appName": "Restaurante",
+  "webDir": "dist",
+  "android": {
+    "allowMixedContent": false
+  },
+  "backgroundColor": "#0f1216"
+}
