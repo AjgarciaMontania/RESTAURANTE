@@ -18,15 +18,26 @@ import {
   saldoDe,
 } from "../lib/fiados";
 
+/** Atajos para no escribir el concepto y el precio a mano. */
+const ATAJOS = [
+  { key: "almuerzoNormal", nombre: "Almuerzo" },
+  { key: "almuerzoEspecial", nombre: "Almuerzo especial" },
+  { key: "soloCaldo", nombre: "Caldo" },
+  { key: "soloSeco", nombre: "Seco" },
+];
+
+const FORM_VACIO = { fecha: "", concepto: "", cant: 1, valor: "" };
+
 export default function Fiados() {
   const [clientes, setClientes] = useState([]);
   const [movs, setMovs] = useState([]);
   const [plantillas, setPlantillas] = useState(PLANTILLAS_DEF);
-  const [negocio, setNegocio] = useState(PRECIOS_DEF.nombreNegocio);
+  const [cfg, setCfg] = useState(PRECIOS_DEF);
 
-  const [abierto, setAbierto] = useState(null); // id del cliente desplegado
+  const [abierto, setAbierto] = useState(null); // cliente desplegado
   const [abono, setAbono] = useState("");
-  const [nuevo, setNuevo] = useState(null); // { nombre, telefono, cedula }
+  const [nuevo, setNuevo] = useState(null); // alta de cliente
+  const [form, setForm] = useState(null); // { modo: 'consumo' | 'saldo', ...FORM_VACIO }
 
   useEffect(() => {
     const a = onSnapshot(collection(db, "clientes"), (s) =>
@@ -39,7 +50,7 @@ export default function Fiados() {
       setPlantillas(s.exists() ? { ...PLANTILLAS_DEF, ...s.data() } : PLANTILLAS_DEF)
     );
     const d = onSnapshot(doc(db, "config", "precios"), (s) =>
-      setNegocio(s.data()?.nombreNegocio || PRECIOS_DEF.nombreNegocio)
+      setCfg(s.exists() ? { ...PRECIOS_DEF, ...s.data() } : PRECIOS_DEF)
     );
     return () => {
       a();
@@ -62,6 +73,17 @@ export default function Fiados() {
 
   const totalPorCobrar = cuentas.reduce((s, c) => s + Math.max(0, c.saldo), 0);
   const deudores = cuentas.filter((c) => c.saldo > 0).length;
+
+  const avisar = (c, plantilla, datos) => {
+    if (!c.telefono) return;
+    window.open(
+      enlaceWhatsApp(
+        c.telefono,
+        armarMensaje(plantilla, { negocio: cfg.nombreNegocio || "Restaurante", ...datos })
+      ),
+      "_blank"
+    );
+  };
 
   const crearCliente = async () => {
     const n = (nuevo?.nombre || "").trim();
@@ -88,39 +110,76 @@ export default function Fiados() {
       fecha: hoy(),
       creado: serverTimestamp(),
     });
-
-    const nuevoSaldo = c.saldo - monto;
     setAbono("");
 
-    if (c.telefono) {
-      const msg = armarMensaje(plantillas.abono, {
-        cliente: c.nombre,
-        fecha: fechaLarga(hoy()),
-        monto: money(monto),
-        saldo: money(Math.max(0, nuevoSaldo)),
-        detalle: "",
-        negocio,
-      });
-      window.open(enlaceWhatsApp(c.telefono, msg), "_blank");
-    }
+    avisar(c, plantillas.abono, {
+      cliente: c.nombre,
+      fecha: fechaLarga(hoy()),
+      monto: money(monto),
+      saldo: money(Math.max(0, c.saldo - monto)),
+      detalle: "",
+    });
   };
 
-  const mandarEstado = (c) => {
-    const msg = armarMensaje(plantillas.estado, {
+  const abrirForm = (modo) =>
+    setForm({ modo, ...FORM_VACIO, fecha: hoy(), concepto: modo === "saldo" ? "" : "Almuerzo" });
+
+  /** Guarda un consumo cargado a mano, o el saldo que traía del cuaderno. */
+  const guardarForm = async (c) => {
+    const esSaldo = form.modo === "saldo";
+    const cant = esSaldo ? 1 : Math.max(1, Number(form.cant) || 1);
+    const valor = Number(form.valor) || 0;
+    const monto = cant * valor;
+
+    if (monto <= 0) return alert("Escribe un valor mayor que cero.");
+    if (!esSaldo && !form.concepto.trim()) return alert("Escribe el concepto.");
+
+    const detalle = esSaldo
+      ? "Saldo anterior del cuaderno"
+      : `${cant}× ${form.concepto.trim()}`;
+
+    await addDoc(collection(db, "fiados"), {
+      clienteId: c.id,
+      clienteNombre: c.nombre,
+      tipo: "deuda",
+      monto,
+      detalle,
+      fecha: form.fecha,
+      manual: true,
+      creado: serverTimestamp(),
+    });
+
+    // Solo se avisa si es de hoy: nadie quiere recibir mensajes de hace meses
+    if (form.fecha === hoy())
+      avisar(c, plantillas.fiado, {
+        cliente: c.nombre,
+        fecha: fechaLarga(form.fecha),
+        detalle,
+        monto: money(monto),
+        saldo: money(Math.max(0, c.saldo + monto)),
+      });
+
+    setForm(null);
+  };
+
+  const mandarEstado = (c) =>
+    avisar(c, plantillas.estado, {
       cliente: c.nombre,
       fecha: fechaLarga(hoy()),
       detalle: detalleCuenta(c.movs) || "Sin movimientos",
       monto: money(c.saldo),
       saldo: money(Math.max(0, c.saldo)),
-      negocio,
     });
-    window.open(enlaceWhatsApp(c.telefono, msg), "_blank");
-  };
 
   const borrarMovimiento = async (m) => {
     if (!confirm(`¿Eliminar este movimiento de ${money(m.monto)}?`)) return;
     await deleteDoc(doc(db, "fiados", m.id));
   };
+
+  const totalForm = form
+    ? (form.modo === "saldo" ? 1 : Math.max(1, Number(form.cant) || 1)) *
+      (Number(form.valor) || 0)
+    : 0;
 
   return (
     <>
@@ -191,11 +250,17 @@ export default function Fiados() {
               <div
                 className="ped-cab"
                 style={{ cursor: "pointer" }}
-                onClick={() => setAbierto(abierto === c.id ? null : c.id)}
+                onClick={() => {
+                  setAbierto(abierto === c.id ? null : c.id);
+                  setForm(null);
+                }}
               >
                 <b className="num">{c.nombre}</b>
                 {c.telefono && <span className="muted">{c.telefono}</span>}
-                <b className="plata" style={{ color: c.saldo > 0 ? "var(--danger)" : "var(--verde)" }}>
+                <b
+                  className="plata"
+                  style={{ color: c.saldo > 0 ? "var(--danger)" : "var(--verde)" }}
+                >
                   {money(Math.max(0, c.saldo))}
                 </b>
               </div>
@@ -220,7 +285,7 @@ export default function Fiados() {
                           .sort((a, b) => (a.fecha < b.fecha ? 1 : -1))
                           .map((m) => (
                             <tr key={m.id}>
-                              <td>{m.fecha}</td>
+                              <td style={{ whiteSpace: "nowrap" }}>{m.fecha}</td>
                               <td>
                                 {m.tipo === "abono" ? (
                                   <b style={{ color: "var(--verde)" }}>Abono</b>
@@ -228,7 +293,10 @@ export default function Fiados() {
                                   m.detalle || "Consumo"
                                 )}
                               </td>
-                              <td className="n" style={{ color: m.tipo === "abono" ? "var(--verde)" : undefined }}>
+                              <td
+                                className="n"
+                                style={{ color: m.tipo === "abono" ? "var(--verde)" : undefined }}
+                              >
                                 {m.tipo === "abono" ? "−" : ""}
                                 {money(m.monto)}
                               </td>
@@ -245,6 +313,130 @@ export default function Fiados() {
                           ))}
                       </tbody>
                     </table>
+                  )}
+
+                  {form ? (
+                    <div className="cobro" style={{ marginTop: 12 }}>
+                      <div style={{ fontWeight: 700, marginBottom: 10 }}>
+                        {form.modo === "saldo"
+                          ? "💼 Saldo que traía del cuaderno"
+                          : "➕ Agregar consumo"}
+                      </div>
+
+                      <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>
+                        Fecha
+                      </div>
+                      <input
+                        type="date"
+                        value={form.fecha}
+                        max={hoy()}
+                        onChange={(e) => setForm({ ...form, fecha: e.target.value })}
+                      />
+
+                      {form.modo === "consumo" && (
+                        <>
+                          <div className="muted" style={{ fontSize: 12, margin: "10px 0 6px" }}>
+                            Atajos
+                          </div>
+                          <div className="chips">
+                            {ATAJOS.map((a) => (
+                              <button
+                                key={a.key}
+                                className="chip"
+                                onClick={() =>
+                                  setForm({
+                                    ...form,
+                                    concepto: a.nombre,
+                                    valor: String(cfg[a.key] ?? ""),
+                                  })
+                                }
+                              >
+                                {a.nombre} <span className="p">{money(cfg[a.key])}</span>
+                              </button>
+                            ))}
+                          </div>
+
+                          <div className="muted" style={{ fontSize: 12, margin: "10px 0 4px" }}>
+                            Concepto
+                          </div>
+                          <input
+                            type="text"
+                            placeholder="Ej: Almuerzo"
+                            value={form.concepto}
+                            onChange={(e) => setForm({ ...form, concepto: e.target.value })}
+                          />
+
+                          <div className="muted" style={{ fontSize: 12, margin: "10px 0 4px" }}>
+                            Cantidad y valor de cada uno
+                          </div>
+                          <div className="row">
+                            <div className="stepper">
+                              <button
+                                onClick={() =>
+                                  setForm({ ...form, cant: Math.max(1, Number(form.cant) - 1) })
+                                }
+                              >
+                                −
+                              </button>
+                              <span>{form.cant}</span>
+                              <button
+                                onClick={() => setForm({ ...form, cant: Number(form.cant) + 1 })}
+                              >
+                                +
+                              </button>
+                            </div>
+                            <input
+                              type="number"
+                              inputMode="numeric"
+                              placeholder="Valor c/u"
+                              value={form.valor}
+                              onChange={(e) => setForm({ ...form, valor: e.target.value })}
+                            />
+                          </div>
+                        </>
+                      )}
+
+                      {form.modo === "saldo" && (
+                        <>
+                          <div className="muted" style={{ fontSize: 12, margin: "10px 0 4px" }}>
+                            Cuánto debía a esa fecha
+                          </div>
+                          <input
+                            type="number"
+                            inputMode="numeric"
+                            placeholder="Ej: 85000"
+                            value={form.valor}
+                            onChange={(e) => setForm({ ...form, valor: e.target.value })}
+                          />
+                        </>
+                      )}
+
+                      <p className="muted" style={{ fontSize: 13, margin: "12px 0 0" }}>
+                        Se le suman <b style={{ color: "var(--danger)" }}>{money(totalForm)}</b> a
+                        la cuenta de {c.nombre}.
+                        {form.fecha === hoy()
+                          ? " Se abrirá WhatsApp para avisarle."
+                          : " No se le avisa, por ser de una fecha anterior."}
+                      </p>
+
+                      <div className="acciones" style={{ marginTop: 12 }}>
+                        <button className="btn primary" onClick={() => guardarForm(c)}>
+                          Guardar
+                        </button>
+                        <button className="btn" onClick={() => setForm(null)}>
+                          Cancelar
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="acciones" style={{ marginTop: 12 }}>
+                      <button className="btn chico" onClick={() => abrirForm("consumo")}>
+                        ➕ Agregar consumo
+                      </button>
+                      <button className="btn chico" onClick={() => abrirForm("saldo")}>
+                        💼 Saldo anterior
+                      </button>
+                    </div>
                   )}
 
                   <div className="row" style={{ marginTop: 12 }}>

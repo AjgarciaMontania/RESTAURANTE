@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { doc, onSnapshot } from "firebase/firestore";
 import { db, hashPin, recordar } from "../firebase";
 
@@ -6,6 +6,9 @@ import { db, hashPin, recordar } from "../firebase";
 const CLAVE_SESION = "restaurante.admin";
 /** Autorización permanente del equipo: solo la usa el TV de la cocina. */
 const CLAVE_EQUIPO = "restaurante.equipoCocina";
+
+/** Minutos sin tocar la pantalla tras los cuales se cierra la sesión. */
+const INACTIVIDAD_MIN = 5;
 
 const Ctx = createContext(null);
 
@@ -81,6 +84,7 @@ export function AdminProvider({ children }) {
     const h = await hashPin(pin);
     if (h !== pinHash) return false;
     sesion.guardar(CLAVE_SESION, h);
+    ultimaActividad.current = Date.now();
     setEsAdmin(true);
     if (permanente) {
       recordar.guardar(CLAVE_EQUIPO, h);
@@ -89,12 +93,50 @@ export function AdminProvider({ children }) {
     return true;
   };
 
-  const salir = () => {
+  /** Cierra solo la sesión: el TV sigue autorizado y no se bloquea. */
+  const cerrarSesion = () => {
     sesion.borrar(CLAVE_SESION);
-    recordar.borrar(CLAVE_EQUIPO);
     setEsAdmin(false);
+  };
+
+  /** Salida explícita: también olvida este equipo. */
+  const salir = () => {
+    cerrarSesion();
+    recordar.borrar(CLAVE_EQUIPO);
     setEquipoCocina(false);
   };
+
+  /**
+   * Cierre por inactividad.
+   *
+   * Si el celular queda quieto varios minutos sobre el mostrador, la sesión de
+   * administrador se cierra sola y vuelve a pedir el PIN. Se mide con la hora
+   * real y no con un temporizador, porque Android congela los temporizadores
+   * cuando la app pasa a segundo plano.
+   */
+  const ultimaActividad = useRef(Date.now());
+
+  useEffect(() => {
+    if (!esAdmin) return;
+
+    const tocar = () => {
+      ultimaActividad.current = Date.now();
+    };
+    const eventos = ["pointerdown", "keydown", "wheel", "touchstart"];
+    eventos.forEach((e) => window.addEventListener(e, tocar, { passive: true }));
+
+    const revisar = () => {
+      if (Date.now() - ultimaActividad.current > INACTIVIDAD_MIN * 60000) cerrarSesion();
+    };
+    const t = setInterval(revisar, 15000);
+    document.addEventListener("visibilitychange", revisar);
+
+    return () => {
+      eventos.forEach((e) => window.removeEventListener(e, tocar));
+      clearInterval(t);
+      document.removeEventListener("visibilitychange", revisar);
+      };
+  }, [esAdmin]);
 
   return (
     <Ctx.Provider
@@ -105,6 +147,7 @@ export function AdminProvider({ children }) {
         equipoCocina,
         entrar,
         salir,
+        inactividadMin: INACTIVIDAD_MIN,
       }}
     >
       {children}

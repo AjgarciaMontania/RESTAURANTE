@@ -65,7 +65,7 @@ export default function Ajustes() {
   const [msgs, setMsgs] = useState(PLANTILLAS_DEF);
   const [verPrevia, setVerPrevia] = useState("");
   const version = useVersionCorta();
-  const { salir, entrar } = useAdmin();
+  const { salir, entrar, inactividadMin } = useAdmin();
 
   useEffect(() => {
     const a = onSnapshot(doc(db, "config", "precios"), (s) => {
@@ -327,8 +327,9 @@ export default function Ajustes() {
           <div style={{ marginTop: 6 }}>🔓 <b>Menú</b> y <b>Pedido</b> — libres, sin PIN</div>
           <div>🔒 <b>Cocina</b>, <b>Caja</b> y <b>Ajustes</b> — solo administrador</div>
           <div style={{ marginTop: 6 }}>
-            La sesión dura mientras la app esté abierta: al cerrarla vuelve a pedir el
-            PIN. El TV es la excepción — se autoriza una vez y queda recordado.
+            La sesión se cierra al salir de la app y también tras{" "}
+            <b>{inactividadMin} minutos</b> sin tocar la pantalla. El TV es la
+            excepción: se autoriza una vez y queda recordado.
           </div>
         </div>
 
