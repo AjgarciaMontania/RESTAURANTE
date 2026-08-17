@@ -146,4 +146,38 @@ const vendido = dia.reduce((s, p) => s + p.total, 0);
 chk3('Caja + fiado + sin cobrar = vendido', enCaja + debido + sinCobrar, vendido);
 
 console.log(f3 ? `\n❌ ${f3} fallo(s) en cobros` : '\n✅ Cobros: todo cuadra');
-process.exit(fallos + f2 + f3 ? 1 : 0);
+
+
+// ---------------------------------------------------------------
+// Avisos: nada se manda solo, se acumula y se envía junto
+// ---------------------------------------------------------------
+import { netoPendiente, plantillaPara, sinAvisar } from './src/lib/fiados.js';
+
+console.log('\n--- Avisos ---');
+let f4 = 0;
+const chk4 = (nom, real, esp) => {
+  const ok = real === esp;
+  if (!ok) f4++;
+  console.log(`${ok ? '✓' : '✗'} ${nom}  ->  ${real}${ok ? '' : `  (esperado ${esp})`}`);
+};
+
+const cuenta = [
+  { tipo: 'deuda', monto: 12000, avisado: true },
+  { tipo: 'deuda', monto: 12000, avisado: false },
+  { tipo: 'abono', monto: 5000, avisado: false },
+  { tipo: 'deuda', monto: 10000 },            // sin la marca = sin avisar
+];
+
+chk4('Cuenta 3 pendientes', sinAvisar(cuenta).length, 3);
+chk4('Neto pendiente (12000 - 5000 + 10000)', netoPendiente(cuenta), 17000);
+chk4('Nada pendiente', sinAvisar([{ tipo: 'deuda', monto: 1, avisado: true }]).length, 0);
+
+chk4('Solo consumos usa plantilla de fiado',
+  plantillaPara([{ tipo: 'deuda' }, { tipo: 'deuda' }]), 'fiado');
+chk4('Solo abonos usa plantilla de abono',
+  plantillaPara([{ tipo: 'abono' }]), 'abono');
+chk4('Mezclados usan estado de cuenta',
+  plantillaPara([{ tipo: 'deuda' }, { tipo: 'abono' }]), 'estado');
+
+console.log(f4 ? `\n❌ ${f4} fallo(s) en avisos` : '\n✅ Avisos: todo pasa');
+process.exit(fallos + f2 + f3 + f4 ? 1 : 0);

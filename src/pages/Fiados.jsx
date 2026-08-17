@@ -6,6 +6,7 @@ import {
   doc,
   onSnapshot,
   serverTimestamp,
+  updateDoc,
 } from "firebase/firestore";
 import { db, hoy } from "../firebase";
 import { PRECIOS_DEF, money } from "../lib/negocio";
@@ -15,7 +16,10 @@ import {
   detalleCuenta,
   enlaceWhatsApp,
   fechaLarga,
+  netoPendiente,
+  plantillaPara,
   saldoDe,
+  sinAvisar,
 } from "../lib/fiados";
 
 /** Atajos para no escribir el concepto y el precio a mano. */
@@ -73,15 +77,50 @@ export default function Fiados() {
 
   const totalPorCobrar = cuentas.reduce((s, c) => s + Math.max(0, c.saldo), 0);
   const deudores = cuentas.filter((c) => c.saldo > 0).length;
+  const porAvisar = cuentas.filter((c) => sinAvisar(c.movs).length > 0).length;
 
-  const avisar = (c, plantilla, datos) => {
-    if (!c.telefono) return;
+  const abrirWhatsApp = (c, plantilla, datos) => {
     window.open(
       enlaceWhatsApp(
         c.telefono,
         armarMensaje(plantilla, { negocio: cfg.nombreNegocio || "Restaurante", ...datos })
       ),
       "_blank"
+    );
+  };
+
+  /**
+   * Avisa de una sola vez todo lo que el cliente todavía no sabe.
+   *
+   * Nada se manda solo: los movimientos se van acumulando como "sin avisar" y
+   * es el dueño quien decide cuándo mandar el mensaje, en uno consolidado.
+   */
+  const avisarPendientes = async (c) => {
+    const pend = sinAvisar(c.movs);
+    if (!pend.length) return;
+    if (!c.telefono) return alert(`${c.nombre} no tiene celular registrado.`);
+
+    const clave = plantillaPara(pend);
+    const neto = netoPendiente(c.movs);
+
+    abrirWhatsApp(c, plantillas[clave], {
+      cliente: c.nombre,
+      fecha: fechaLarga(hoy()),
+      detalle: detalleCuenta(pend),
+      monto: money(Math.abs(neto)),
+      saldo: money(Math.max(0, c.saldo)),
+    });
+
+    await Promise.all(
+      pend.map((m) => updateDoc(doc(db, "fiados", m.id), { avisado: true }))
+    );
+  };
+
+  const marcarAvisados = async (c) => {
+    const pend = sinAvisar(c.movs);
+    if (!pend.length) return;
+    await Promise.all(
+      pend.map((m) => updateDoc(doc(db, "fiados", m.id), { avisado: true }))
     );
   };
 
@@ -108,17 +147,10 @@ export default function Fiados() {
       monto,
       detalle: "",
       fecha: hoy(),
+      avisado: false,
       creado: serverTimestamp(),
     });
     setAbono("");
-
-    avisar(c, plantillas.abono, {
-      cliente: c.nombre,
-      fecha: fechaLarga(hoy()),
-      monto: money(monto),
-      saldo: money(Math.max(0, c.saldo - monto)),
-      detalle: "",
-    });
   };
 
   const abrirForm = (modo) =>
@@ -146,30 +178,25 @@ export default function Fiados() {
       detalle,
       fecha: form.fecha,
       manual: true,
+      // Nada se avisa solo: queda pendiente y el dueño decide cuándo mandarlo.
+      // Lo viejo entra ya avisado, para no ofrecer mensajes de hace meses.
+      avisado: form.fecha !== hoy(),
       creado: serverTimestamp(),
     });
-
-    // Solo se avisa si es de hoy: nadie quiere recibir mensajes de hace meses
-    if (form.fecha === hoy())
-      avisar(c, plantillas.fiado, {
-        cliente: c.nombre,
-        fecha: fechaLarga(form.fecha),
-        detalle,
-        monto: money(monto),
-        saldo: money(Math.max(0, c.saldo + monto)),
-      });
 
     setForm(null);
   };
 
-  const mandarEstado = (c) =>
-    avisar(c, plantillas.estado, {
+  const mandarEstado = (c) => {
+    if (!c.telefono) return alert(`${c.nombre} no tiene celular registrado.`);
+    abrirWhatsApp(c, plantillas.estado, {
       cliente: c.nombre,
       fecha: fechaLarga(hoy()),
       detalle: detalleCuenta(c.movs) || "Sin movimientos",
       monto: money(c.saldo),
       saldo: money(Math.max(0, c.saldo)),
     });
+  };
 
   const borrarMovimiento = async (m) => {
     if (!confirm(`¿Eliminar este movimiento de ${money(m.monto)}?`)) return;
@@ -193,6 +220,12 @@ export default function Fiados() {
           <div className="kpi">
             <div className="v">{deudores}</div>
             <div className="l">Deben</div>
+          </div>
+          <div className="kpi">
+            <div className="v" style={{ color: porAvisar ? "#8a6412" : undefined }}>
+              {porAvisar}
+            </div>
+            <div className="l">Sin avisar</div>
           </div>
         </div>
         <button
@@ -257,6 +290,11 @@ export default function Fiados() {
               >
                 <b className="num">{c.nombre}</b>
                 {c.telefono && <span className="muted">{c.telefono}</span>}
+                {sinAvisar(c.movs).length > 0 && (
+                  <span className="badge pend">
+                    {sinAvisar(c.movs).length} sin avisar
+                  </span>
+                )}
                 <b
                   className="plata"
                   style={{ color: c.saldo > 0 ? "var(--danger)" : "var(--verde)" }}
@@ -291,6 +329,14 @@ export default function Fiados() {
                                   <b style={{ color: "var(--verde)" }}>Abono</b>
                                 ) : (
                                   m.detalle || "Consumo"
+                                )}
+                                {!m.avisado && (
+                                  <span
+                                    className="muted"
+                                    style={{ display: "block", fontSize: 11 }}
+                                  >
+                                    sin avisar
+                                  </span>
                                 )}
                               </td>
                               <td
@@ -415,8 +461,8 @@ export default function Fiados() {
                         Se le suman <b style={{ color: "var(--danger)" }}>{money(totalForm)}</b> a
                         la cuenta de {c.nombre}.
                         {form.fecha === hoy()
-                          ? " Se abrirá WhatsApp para avisarle."
-                          : " No se le avisa, por ser de una fecha anterior."}
+                          ? " Queda pendiente de avisar; tú decides cuándo mandarlo."
+                          : " Por ser de una fecha anterior, no se ofrece avisar."}
                       </p>
 
                       <div className="acciones" style={{ marginTop: 12 }}>
@@ -452,12 +498,35 @@ export default function Fiados() {
                     </button>
                   </div>
 
+                  {sinAvisar(c.movs).length > 0 && (
+                    <div
+                      style={{
+                        marginTop: 12, padding: "12px", borderRadius: 10,
+                        background: "#fbf3e0", border: "1px solid #ecd9ac",
+                      }}
+                    >
+                      <div style={{ fontSize: 13, marginBottom: 8 }}>
+                        Hay <b>{sinAvisar(c.movs).length} movimiento
+                        {sinAvisar(c.movs).length === 1 ? "" : "s"}</b> que{" "}
+                        {c.nombre} todavía no sabe. Se le manda todo en un solo mensaje.
+                      </div>
+                      <div className="acciones">
+                        <button className="btn primary chico" onClick={() => avisarPendientes(c)}>
+                          💬 Avisar por WhatsApp
+                        </button>
+                        <button className="btn chico" onClick={() => marcarAvisados(c)}>
+                          Ya le avisé
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
                   <button
                     className="btn block"
-                    style={{ marginTop: 8 }}
+                    style={{ marginTop: 10 }}
                     onClick={() => mandarEstado(c)}
                   >
-                    💬 Enviar estado de cuenta
+                    💬 Enviar estado de cuenta completo
                   </button>
                 </div>
               )}

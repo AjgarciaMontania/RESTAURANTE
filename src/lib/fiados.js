@@ -84,6 +84,28 @@ export function saldoDe(movimientos) {
   );
 }
 
+/**
+ * Movimientos que todavía no se le han avisado al cliente.
+ *
+ * En vez de mandar un mensaje por cada consumo, se acumulan y se avisan todos
+ * juntos en uno solo: menos molestia para el cliente y más claro para cobrar.
+ */
+export const sinAvisar = (movs) => movs.filter((m) => !m.avisado);
+
+/** Neto de los movimientos pendientes: consumos menos abonos. */
+export const netoPendiente = (movs) => saldoDe(sinAvisar(movs));
+
+/**
+ * Qué plantilla usar según lo que haya pendiente.
+ * Si hay consumos y abonos mezclados, el estado de cuenta es lo que mejor se lee.
+ */
+export function plantillaPara(pendientes) {
+  const hayDeuda = pendientes.some((m) => m.tipo !== "abono");
+  const hayAbono = pendientes.some((m) => m.tipo === "abono");
+  if (hayDeuda && hayAbono) return "estado";
+  return hayAbono ? "abono" : "fiado";
+}
+
 /** Resumen de la cuenta para el mensaje de estado. */
 export function detalleCuenta(movimientos) {
   return movimientos

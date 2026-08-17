@@ -4,7 +4,6 @@ import {
   collection,
   deleteDoc,
   doc,
-  getDocs,
   onSnapshot,
   query,
   serverTimestamp,
@@ -21,13 +20,6 @@ import {
   money,
   quedoDebiendo,
 } from "../lib/negocio";
-import {
-  PLANTILLAS_DEF,
-  armarMensaje,
-  enlaceWhatsApp,
-  fechaLarga,
-  saldoDe,
-} from "../lib/fiados";
 import SelectorCliente from "../components/SelectorCliente.jsx";
 
 export default function Caja() {
@@ -35,7 +27,6 @@ export default function Caja() {
   const [vista, setVista] = useState("cobrar");
   const [pedidos, setPedidos] = useState([]);
   const [clientes, setClientes] = useState([]);
-  const [plantillas, setPlantillas] = useState(PLANTILLAS_DEF);
   const [cfg, setCfg] = useState(PRECIOS_DEF);
 
   // Panel de cobro abierto
@@ -56,16 +47,12 @@ export default function Caja() {
     const a = onSnapshot(collection(db, "clientes"), (s) =>
       setClientes(s.docs.map((d) => ({ id: d.id, ...d.data() })))
     );
-    const b = onSnapshot(doc(db, "config", "mensajes"), (s) =>
-      setPlantillas(s.exists() ? { ...PLANTILLAS_DEF, ...s.data() } : PLANTILLAS_DEF)
-    );
-    const c = onSnapshot(doc(db, "config", "precios"), (s) =>
+    const b = onSnapshot(doc(db, "config", "precios"), (s) =>
       setCfg(s.exists() ? { ...PRECIOS_DEF, ...s.data() } : PRECIOS_DEF)
     );
     return () => {
       a();
       b();
-      c();
     };
   }, []);
 
@@ -104,7 +91,12 @@ export default function Caja() {
     setClienteSel(null);
   };
 
-  /** Anota la deuda en la cuenta del cliente y le avisa por WhatsApp. */
+  /**
+   * Anota la deuda en la cuenta del cliente.
+   *
+   * No manda WhatsApp aquí: queda marcada como "sin avisar" y desde Fiados se
+   * envía un solo mensaje con todo lo pendiente, cuando el dueño quiera.
+   */
   const anotarDeuda = async (p, monto, cliente) => {
     const detalle = (p.items || []).map((i) => `${i.cant}× ${i.descripcion}`).join(", ");
 
@@ -116,22 +108,9 @@ export default function Caja() {
       detalle,
       numero: p.numero,
       fecha: p.fecha,
+      avisado: false,
       creado: serverTimestamp(),
     });
-
-    const movs = await getDocs(
-      query(collection(db, "fiados"), where("clienteId", "==", cliente.id))
-    );
-
-    const msg = armarMensaje(plantillas.fiado, {
-      cliente: cliente.nombre,
-      fecha: fechaLarga(p.fecha),
-      detalle,
-      monto: money(monto),
-      saldo: money(Math.max(0, saldoDe(movs.docs.map((d) => d.data())))),
-      negocio: cfg.nombreNegocio || "Restaurante",
-    });
-    window.open(enlaceWhatsApp(cliente.telefono, msg), "_blank");
   };
 
   const cobrar = async (p) => {
@@ -322,7 +301,8 @@ export default function Caja() {
                           <div className="muted" style={{ fontSize: 13, marginBottom: 6 }}>
                             Quedan debiendo{" "}
                             <b style={{ color: "var(--danger)" }}>{money(falta)}</b>. ¿A nombre
-                            de quién?
+                            de quién? Se anota en su cuenta; el aviso por WhatsApp lo mandas
+                            tú desde Fiados.
                           </div>
                           <SelectorCliente
                             clientes={clientes}
