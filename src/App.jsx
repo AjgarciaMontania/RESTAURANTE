@@ -7,11 +7,12 @@ import Ajustes from "./pages/Ajustes.jsx";
 import SoloAdmin from "./SoloAdmin.jsx";
 import { AdminProvider, useAdmin } from "./lib/admin.jsx";
 import { useAutoActualizar } from "./lib/version.js";
+import { useBotonAtras } from "./lib/atras.js";
 
 const TABS = [
   { to: "/", ic: "📝", label: "Menú" },
   { to: "/pedido", ic: "🧾", label: "Pedido" },
-  { to: "/cocina", ic: "📺", label: "Cocina" },
+  { to: "/cocina", ic: "📺", label: "Cocina", admin: true },
   { to: "/caja", ic: "📊", label: "Caja", admin: true },
   { to: "/ajustes", ic: "⚙️", label: "Ajustes", admin: true },
 ];
@@ -20,6 +21,7 @@ function Shell() {
   const { pathname } = useLocation();
   const { esAdmin, hayPin } = useAdmin();
   useAutoActualizar();
+  useBotonAtras();
 
   // La vista de TV va a pantalla completa, sin barras
   const kiosco = pathname.startsWith("/cocina");
@@ -27,7 +29,14 @@ function Shell() {
   if (kiosco) {
     return (
       <Routes>
-        <Route path="/cocina" element={<Cocina />} />
+        <Route
+          path="/cocina"
+          element={
+            <SoloAdmin titulo="Pantalla de cocina" permanente pantalla>
+              <Cocina />
+            </SoloAdmin>
+          }
+        />
       </Routes>
     );
   }

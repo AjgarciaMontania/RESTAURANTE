@@ -3,22 +3,31 @@ import { useAdmin } from "./lib/admin.jsx";
 
 const TECLAS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "⌫"];
 
-/** Envuelve las pantallas que solo puede abrir el administrador. */
-export default function SoloAdmin({ titulo, children }) {
-  const { cargando, esAdmin, entrar } = useAdmin();
+/**
+ * Envuelve las pantallas del administrador.
+ *
+ * @param {boolean} permanente  En el TV de la cocina: recuerda el equipo para
+ *                              siempre, así no se bloquea al reiniciarse.
+ * @param {boolean} pantalla    Presentación a pantalla completa (TV).
+ */
+export default function SoloAdmin({ titulo, permanente, pantalla, children }) {
+  const { cargando, esAdmin, equipoCocina, entrar } = useAdmin();
   const [pin, setPin] = useState("");
   const [error, setError] = useState("");
   const [sacudir, setSacudir] = useState(false);
 
-  if (cargando) return <p className="empty">Cargando…</p>;
-  if (esAdmin) return children;
+  const autorizado = permanente ? esAdmin || equipoCocina : esAdmin;
+
+  if (cargando)
+    return pantalla ? <div className="tv-cargando">Cargando…</div> : <p className="empty">Cargando…</p>;
+  if (autorizado) return children;
 
   const marcar = async (nuevo) => {
     setPin(nuevo);
     setError("");
     if (nuevo.length < 4) return;
 
-    if (await entrar(nuevo)) return;
+    if (await entrar(nuevo, permanente)) return;
 
     setError("PIN incorrecto");
     setSacudir(true);
@@ -33,11 +42,15 @@ export default function SoloAdmin({ titulo, children }) {
     if (t && pin.length < 4) marcar(pin + t);
   };
 
-  return (
+  const caja = (
     <div className={"card bloqueo" + (sacudir ? " error" : "")}>
       <div className="candado">🔒</div>
       <h3>{titulo}</h3>
-      <p>Esta sección es solo del administrador</p>
+      <p>
+        {permanente
+          ? "Digita el PIN una sola vez. Este equipo queda autorizado."
+          : "Esta sección es solo del administrador"}
+      </p>
 
       <div className="puntos">
         {[0, 1, 2, 3].map((i) => (
@@ -56,4 +69,6 @@ export default function SoloAdmin({ titulo, children }) {
       </div>
     </div>
   );
+
+  return pantalla ? <div className="pantalla-bloqueo">{caja}</div> : caja;
 }

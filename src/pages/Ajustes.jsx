@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { doc, onSnapshot, setDoc } from "firebase/firestore";
-import { db, hashPin, recordar } from "../firebase";
+import { db, hashPin } from "../firebase";
 import { PRECIOS_DEF } from "../lib/negocio";
 import { useVersionCorta } from "../lib/version.js";
 import { useAdmin } from "../lib/admin.jsx";
@@ -39,7 +39,7 @@ export default function Ajustes() {
   const [pin, setPin] = useState("");
   const [tienePin, setTienePin] = useState(false);
   const version = useVersionCorta();
-  const { salir, hayPin } = useAdmin();
+  const { salir, entrar } = useAdmin();
 
   useEffect(() => {
     const a = onSnapshot(doc(db, "config", "precios"), (s) => {
@@ -71,7 +71,8 @@ export default function Ajustes() {
     if (!/^\d{4}$/.test(pin)) return alert("El PIN debe ser de 4 dígitos.");
     const h = await hashPin(pin);
     await setDoc(doc(db, "config", "acceso"), { pinHash: h });
-    recordar.guardar("restaurante.acceso", h);
+    // Quien acaba de poner el PIN no debería quedar afuera de inmediato
+    setTimeout(() => entrar(pin), 300);
     setPin("");
     setOk(true);
     setTimeout(() => setOk(false), 1800);
@@ -211,8 +212,11 @@ export default function Ajustes() {
         >
           <b style={{ color: "var(--text)" }}>Qué protege el PIN</b>
           <div style={{ marginTop: 6 }}>🔓 <b>Menú</b> y <b>Pedido</b> — libres, sin PIN</div>
-          <div>🔓 <b>Cocina</b> — libre, para que el TV arranque solo</div>
-          <div>🔒 <b>Caja</b> y <b>Ajustes</b> — solo administrador</div>
+          <div>🔒 <b>Cocina</b>, <b>Caja</b> y <b>Ajustes</b> — solo administrador</div>
+          <div style={{ marginTop: 6 }}>
+            La sesión dura mientras la app esté abierta: al cerrarla vuelve a pedir el
+            PIN. El TV es la excepción — se autoriza una vez y queda recordado.
+          </div>
         </div>
 
         {tienePin && (
