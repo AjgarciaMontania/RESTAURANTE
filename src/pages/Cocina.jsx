@@ -1,10 +1,14 @@
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { collection, doc, onSnapshot, query, updateDoc, where } from "firebase/firestore";
-import { db, hoy } from "../firebase";
+import { db, hoy, recordar } from "../firebase";
 
 /** Minutos a partir de los cuales la comanda se marca como atrasada. */
 const AVISO = 10;
 const URGENTE = 18;
+
+const CLAVE_ZOOM = "restaurante.tvZoom";
+const BASE = 16;
+const MIN_ESCALA = 0.42;
 
 /** Pantalla para el TV. Se abre con  .../#/cocina  en pantalla completa. */
 export default function Cocina() {
@@ -13,6 +17,9 @@ export default function Cocina() {
   const [entregados, setEntregados] = useState(0);
   const [usarMesas, setUsarMesas] = useState(true);
   const [ahora, setAhora] = useState(Date.now());
+  const [zoom, setZoom] = useState(() => Number(recordar.leer(CLAVE_ZOOM)) || 1);
+
+  const tablero = useRef(null);
 
   useEffect(
     () =>
@@ -40,6 +47,39 @@ export default function Cocina() {
     });
   }, [fecha]);
 
+  /**
+   * Ajuste automático: empieza en el tamaño elegido y lo va reduciendo hasta
+   * que todas las comandas quepan sin desbordar la pantalla del TV.
+   */
+  useLayoutEffect(() => {
+    const el = tablero.current;
+    if (!el) return;
+
+    const ajustar = () => {
+      let f = zoom;
+      el.style.fontSize = BASE * f + "px";
+      let vueltas = 0;
+      while (
+        document.documentElement.scrollHeight > window.innerHeight + 2 &&
+        f > MIN_ESCALA &&
+        vueltas++ < 40
+      ) {
+        f -= 0.035;
+        el.style.fontSize = (BASE * f).toFixed(2) + "px";
+      }
+    };
+
+    ajustar();
+    window.addEventListener("resize", ajustar);
+    return () => window.removeEventListener("resize", ajustar);
+  }, [pedidos, zoom, usarMesas, entregados]);
+
+  const cambiarZoom = (paso) => {
+    const z = Math.min(1.6, Math.max(0.6, Number((zoom + paso).toFixed(2))));
+    setZoom(z);
+    recordar.guardar(CLAVE_ZOOM, String(z));
+  };
+
   const entregar = (id) => updateDoc(doc(db, "pedidos", id), { estado: "entregado" });
 
   const minutos = (p) => {
@@ -56,7 +96,7 @@ export default function Cocina() {
   const dia = d.charAt(0).toUpperCase() + d.slice(1);
 
   return (
-    <div className="tv">
+    <div className="tv" ref={tablero}>
       <header className="tv-head">
         <span className="tv-marca" aria-hidden="true">
           <Plato />
@@ -65,6 +105,14 @@ export default function Cocina() {
         <span className="tv-dia">{dia}</span>
 
         <div className="tv-metricas">
+          <div className="tv-zoom">
+            <button onClick={() => cambiarZoom(-0.1)} disabled={zoom <= 0.6} title="Más pequeño">
+              −
+            </button>
+            <button onClick={() => cambiarZoom(0.1)} disabled={zoom >= 1.6} title="Más grande">
+              +
+            </button>
+          </div>
           <div className="tv-met">
             <b>{pedidos.length}</b>
             <span>en preparación</span>
@@ -79,7 +127,7 @@ export default function Cocina() {
 
       {pedidos.length === 0 ? (
         <div className="tv-empty">
-          <Plato grande />
+          <Plato />
           <h2>Todo al día</h2>
           <p>Las comandas nuevas aparecen aquí solas, sin recargar</p>
         </div>
@@ -132,11 +180,10 @@ export default function Cocina() {
   );
 }
 
-/** Marca de la casa: plato con cubiertos, dibujado en SVG para que se vea nítido en el TV. */
-function Plato({ grande }) {
-  const s = grande ? 96 : 46;
+/** Marca de la casa: plato con cubiertos, en SVG para que se vea nítido en el TV. */
+function Plato() {
   return (
-    <svg width={s} height={s} viewBox="0 0 512 512" fill="none">
+    <svg viewBox="0 0 512 512" fill="none">
       <circle cx="256" cy="258" r="128" stroke="#d8a94f" strokeWidth="20" />
       <circle cx="256" cy="258" r="72" fill="#d8a94f" opacity=".16" />
       <g fill="#f0e7d6">
