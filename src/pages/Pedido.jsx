@@ -146,16 +146,18 @@ export default function Pedido() {
 
   return (
     <>
-      <div className="card">
-        <h2>🪑 Mesa</h2>
-        <input
-          type="text"
-          inputMode="numeric"
-          placeholder="Número de mesa (ej: 4)"
-          value={mesa}
-          onChange={(e) => setMesa(e.target.value)}
-        />
-      </div>
+      {precios.usarMesas && (
+        <div className="card">
+          <h2>🪑 Mesa</h2>
+          <input
+            type="text"
+            inputMode="numeric"
+            placeholder="Número de mesa (ej: 4)"
+            value={mesa}
+            onChange={(e) => setMesa(e.target.value)}
+          />
+        </div>
+      )}
 
       {(caldos.length > 0 || proteinas.length > 0) && (
         <div className="card">
@@ -257,57 +259,52 @@ export default function Pedido() {
         {items.length === 0 ? (
           <p className="empty">Todavía no has agregado nada</p>
         ) : (
-          <table className="tal">
-            <thead>
-              <tr>
-                <th style={{ width: 92 }}>Cant</th>
-                <th>Descripción</th>
-                <th className="n">P. unitario</th>
-                <th className="n">Total</th>
-                <th style={{ width: 40 }} />
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((i) => (
-                <tr key={i.id}>
-                  <td>
-                    <div className="stepper">
-                      <button onClick={() => editarItem(i.id, "cant", Math.max(1, i.cant - 1))}>−</button>
-                      <span>{i.cant}</span>
-                      <button onClick={() => editarItem(i.id, "cant", i.cant + 1)}>+</button>
-                    </div>
-                  </td>
-                  <td>{i.descripcion}</td>
-                  <td className="n">
-                    {i.fijo ? (
-                      money(i.precioUnit)
-                    ) : (
-                      <input
-                        className="mini"
-                        type="number"
-                        inputMode="numeric"
-                        value={i.precioUnit || ""}
-                        onChange={(e) =>
-                          editarItem(i.id, "precioUnit", Number(e.target.value) || 0)
-                        }
-                      />
-                    )}
-                  </td>
-                  <td className="n">{money(i.cant * i.precioUnit)}</td>
-                  <td>
-                    <button className="btn icon del" onClick={() => quitar(i.id)}>✕</button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-            <tfoot>
-              <tr>
-                <td colSpan={3} className="n">TOTAL</td>
-                <td className="n">{money(total)}</td>
-                <td />
-              </tr>
-            </tfoot>
-          </table>
+          <div className="lineas">
+            {items.map((i) => (
+              <div className="linea" key={i.id}>
+                <div className="l-top">
+                  <div className="l-desc">{i.descripcion}</div>
+                  <button
+                    className="btn icon del"
+                    aria-label="Quitar línea"
+                    onClick={() => quitar(i.id)}
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <div className="l-ctrl">
+                  <div className="stepper">
+                    <button onClick={() => editarItem(i.id, "cant", Math.max(1, i.cant - 1))}>−</button>
+                    <span>{i.cant}</span>
+                    <button onClick={() => editarItem(i.id, "cant", i.cant + 1)}>+</button>
+                  </div>
+
+                  {i.fijo ? (
+                    <span className="l-unit">{money(i.precioUnit)} c/u</span>
+                  ) : (
+                    <input
+                      className="l-input"
+                      type="number"
+                      inputMode="numeric"
+                      value={i.precioUnit || ""}
+                      placeholder="$"
+                      onChange={(e) =>
+                        editarItem(i.id, "precioUnit", Number(e.target.value) || 0)
+                      }
+                    />
+                  )}
+
+                  <span className="l-total">{money(i.cant * i.precioUnit)}</span>
+                </div>
+              </div>
+            ))}
+
+            <div className="l-final">
+              <span>Total</span>
+              <b>{money(total)}</b>
+            </div>
+          </div>
         )}
 
         <button

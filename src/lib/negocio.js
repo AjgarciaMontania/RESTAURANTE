@@ -12,6 +12,8 @@
  */
 
 export const PRECIOS_DEF = {
+  /** Si está apagado, el talonario no pide número de mesa. */
+  usarMesas: true,
   almuerzoNormal: 10000,
   almuerzoNormalFijo: true,
   almuerzoEspecial: 13000,

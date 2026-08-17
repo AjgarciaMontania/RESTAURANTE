@@ -11,7 +11,16 @@ export default function Cocina() {
   const [fecha, setFecha] = useState(hoy());
   const [pedidos, setPedidos] = useState([]);
   const [entregados, setEntregados] = useState(0);
+  const [usarMesas, setUsarMesas] = useState(true);
   const [ahora, setAhora] = useState(Date.now());
+
+  useEffect(
+    () =>
+      onSnapshot(doc(db, "config", "precios"), (s) =>
+        setUsarMesas(s.exists() ? s.data().usarMesas !== false : true)
+      ),
+    []
+  );
 
   // Reloj + cambio automático de día a medianoche
   useEffect(() => {
@@ -90,7 +99,7 @@ export default function Cocina() {
                   {p.mesa ? (
                     <span className="mesa">Mesa {p.mesa}</span>
                   ) : (
-                    <span className="mesa llevar">Para llevar</span>
+                    usarMesas && <span className="mesa llevar">Para llevar</span>
                   )}
                 </header>
 

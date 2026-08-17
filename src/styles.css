@@ -215,6 +215,76 @@ input::placeholder { color: #b3a794; }
 }
 .tal input.mini { min-height: 38px; padding: 6px 8px; text-align: right; width: 96px; }
 
+/* ---------- Lineas del pedido (talonario) ----------
+   Diseñadas para el celular: nunca se desbordan, la descripción va arriba
+   y los controles debajo, en una fila que se adapta.
+   ------------------------------------------------------------------ */
+.lineas { display: flex; flex-direction: column; }
+
+.linea {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  padding: 11px 12px;
+  margin-bottom: 9px;
+}
+.l-top { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 10px; }
+.l-desc {
+  flex: 1; min-width: 0;
+  font-weight: 700; font-size: 15px; line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.l-top .btn.icon { min-width: 38px; min-height: 38px; padding: 0 9px; flex: none; }
+
+/* flex-wrap siempre activo: en cualquier ancho baja de fila en vez de desbordarse */
+.l-ctrl { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
+
+.stepper button { width: 38px; }
+.stepper span { min-width: 34px; }
+
+.l-unit { font-size: 13px; color: var(--muted); white-space: nowrap; }
+input.l-input {
+  width: 92px; flex: none; min-height: 40px;
+  padding: 6px 9px; text-align: right;
+}
+.l-total {
+  margin-left: auto; font-weight: 800; font-size: 17px;
+  color: var(--verde); font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+
+.l-final {
+  display: flex; align-items: baseline; gap: 12px;
+  margin-top: 6px; padding-top: 13px;
+  border-top: 2px solid var(--verde);
+}
+.l-final span {
+  font-family: var(--serif); font-size: 19px; color: var(--verde);
+  letter-spacing: 1px; text-transform: uppercase;
+}
+.l-final b {
+  margin-left: auto; font-size: 25px; font-weight: 800;
+  color: var(--verde); font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Interruptor ---------- */
+.switch {
+  display: flex; align-items: center; gap: 12px; cursor: pointer;
+  padding: 4px 0; user-select: none;
+}
+.switch .pista {
+  flex: none; width: 52px; height: 30px; border-radius: 30px;
+  background: var(--line-fuerte); position: relative; transition: background .2s;
+}
+.switch .pista::after {
+  content: ""; position: absolute; top: 3px; left: 3px;
+  width: 24px; height: 24px; border-radius: 50%; background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .25); transition: transform .2s;
+}
+.switch.on .pista { background: var(--verde); }
+.switch.on .pista::after { transform: translateX(22px); }
+.switch .txt { font-weight: 600; }
+.switch .txt small { display: block; font-weight: 400; font-size: 13px; color: var(--muted); }
+
 /* ---------- Caja ---------- */
 .kpis { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
 @media (min-width: 620px) { .kpis { grid-template-columns: repeat(4, 1fr); } }

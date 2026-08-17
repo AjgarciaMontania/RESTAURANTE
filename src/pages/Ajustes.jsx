@@ -29,6 +29,12 @@ export default function Ajustes() {
     };
   }, []);
 
+  /** Las opciones de un solo toque se guardan solas, sin botón. */
+  const guardarOpcion = async (campo, valor) => {
+    setP((s) => ({ ...s, [campo]: valor }));
+    await setDoc(doc(db, "config", "precios"), { [campo]: valor }, { merge: true });
+  };
+
   const guardarPin = async () => {
     if (!/^\d{4}$/.test(pin)) return alert("El PIN debe ser de 4 dígitos.");
     await setDoc(doc(db, "config", "acceso"), { pinHash: await hashPin(pin) });
@@ -46,6 +52,26 @@ export default function Ajustes() {
 
   return (
     <>
+      <div className="card">
+        <h2>🪑 Mesas</h2>
+        <div
+          className={"switch" + (p.usarMesas ? " on" : "")}
+          onClick={() => guardarOpcion("usarMesas", !p.usarMesas)}
+          role="switch"
+          aria-checked={!!p.usarMesas}
+        >
+          <span className="pista" />
+          <span className="txt">
+            Pedir el número de mesa
+            <small>
+              {p.usarMesas
+                ? "El talonario muestra la casilla de mesa y el TV la indica en cada comanda."
+                : "Apagado: el talonario arranca directo en el menú, sin esa casilla."}
+            </small>
+          </span>
+        </div>
+      </div>
+
       <div className="card">
         <h2>💵 Precios base</h2>
         <p className="muted" style={{ fontSize: 13, margin: "0 0 14px" }}>
