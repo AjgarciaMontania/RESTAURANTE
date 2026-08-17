@@ -476,6 +476,40 @@ input.l-input {
 }
 .tv-empty p { margin: 0; font-size: 1.25em; color: #a8c2b3; }
 
+/* ---- La misma pantalla, en un celular ----
+   El tablero está pensado para un TV horizontal. En una pantalla angosta la
+   cabecera se parte en dos filas y las comandas van en una sola columna.
+   ------------------------------------------------------------------ */
+@media (max-width: 720px) {
+  .tv { padding: 1em .8em 1.4em; }
+
+  .tv-head { flex-wrap: wrap; gap: .4em .7em; padding-bottom: .7em; margin-bottom: 1em; }
+  .tv-head::after { width: 7em; }
+  .tv-marca svg { width: 2.1em; height: 2.1em; }
+  .tv-head h1 { font-size: 1.7em; letter-spacing: .07em; }
+  .tv-dia { font-size: .95em; padding-left: .6em; }
+
+  .tv-metricas {
+    width: 100%; margin-left: 0; gap: .9em;
+    justify-content: flex-start; padding-top: .2em;
+  }
+  .tv-met b { font-size: 1.35em; }
+  .tv-met span { font-size: .62em; letter-spacing: .06em; }
+  .tv-reloj { font-size: 1.5em; margin-left: auto; padding-left: .6em; }
+  .tv-zoom button { width: 2em; height: 2em; }
+
+  .tv-grid { grid-template-columns: 1fr; gap: .8em; }
+  .ticket-head .num { font-size: 1.8em; }
+  .ticket-items li { font-size: 1.15em; }
+  .ticket-cliente { font-size: 1.05em; }
+  .btn-listo { font-size: 1em; min-height: 2.4em; padding: 0 1em; }
+
+  .tv-empty { height: 55vh; }
+  .tv-empty svg { width: 4.2em; height: 4.2em; }
+  .tv-empty h2 { font-size: 2em; }
+  .tv-empty p { font-size: 1.05em; }
+}
+
 @keyframes entra {
   from { opacity: 0; transform: translateY(-10px); }
   to { opacity: 1; transform: none; }

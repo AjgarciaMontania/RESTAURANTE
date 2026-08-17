@@ -81,9 +81,32 @@ export const recordar = {
   },
 };
 
-/** Fecha local (Colombia) en formato YYYY-MM-DD, usada como id del menú del día */
+/**
+ * Zona horaria del restaurante.
+ *
+ * Se fija a propósito: si un celular o un TV Box tiene mal la hora o la zona,
+ * la app seguiría mostrando la hora de Colombia y, sobre todo, los pedidos
+ * seguirían cayendo en el día correcto.
+ */
+export const ZONA = "America/Bogota";
+
+const fmtFecha = new Intl.DateTimeFormat("en-CA", {
+  timeZone: ZONA,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
+/** Fecha de hoy en Colombia, formato YYYY-MM-DD. Es el id del menú del día. */
 export function hoy() {
-  const d = new Date();
-  const off = d.getTimezoneOffset() * 60000;
-  return new Date(d - off).toISOString().slice(0, 10);
+  return fmtFecha.format(new Date());
+}
+
+/** Hora de Colombia, para el reloj de la cocina. */
+export function horaColombia(ms) {
+  return new Intl.DateTimeFormat("es-CO", {
+    timeZone: ZONA,
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(ms));
 }

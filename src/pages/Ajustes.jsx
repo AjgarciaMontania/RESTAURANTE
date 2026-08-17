@@ -153,7 +153,7 @@ export default function Ajustes() {
           la pantalla. El botón «Entregado» sigue funcionando para sacarla antes.
         </div>
         <div className="chips">
-          {[0, 15, 30, 45, 60].map((m) => (
+          {[0, 10, 15, 30, 45, 60].map((m) => (
             <button
               key={m}
               className={"chip" + ((p.autoEntregarMin ?? 30) === m ? " on" : "")}

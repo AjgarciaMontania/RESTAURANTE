@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { collection, doc, onSnapshot, query, updateDoc, where } from "firebase/firestore";
-import { db, hoy, recordar } from "../firebase";
+import { db, hoy, horaColombia, recordar, ZONA } from "../firebase";
 import { useVersionCorta } from "../lib/version.js";
 
 /** Minutos a partir de los cuales la comanda se marca como atrasada. */
@@ -57,15 +57,16 @@ export default function Cocina() {
     const el = tablero.current;
     if (!el) return;
 
+    const desborda = () => {
+      const r = document.documentElement;
+      return r.scrollHeight > window.innerHeight + 2 || r.scrollWidth > window.innerWidth + 1;
+    };
+
     const ajustar = () => {
       let f = zoom;
       el.style.fontSize = BASE * f + "px";
       let vueltas = 0;
-      while (
-        document.documentElement.scrollHeight > window.innerHeight + 2 &&
-        f > MIN_ESCALA &&
-        vueltas++ < 40
-      ) {
+      while (desborda() && f > MIN_ESCALA && vueltas++ < 40) {
         f -= 0.035;
         el.style.fontSize = (BASE * f).toFixed(2) + "px";
       }
@@ -107,8 +108,9 @@ export default function Cocina() {
     return ms ? Math.max(0, Math.floor((ahora - ms) / 60000)) : 0;
   };
 
-  const reloj = new Date(ahora).toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" });
-  const d = new Date(fecha + "T12:00:00").toLocaleDateString("es-CO", {
+  const reloj = horaColombia(ahora);
+  const d = new Date(fecha + "T12:00:00Z").toLocaleDateString("es-CO", {
+    timeZone: ZONA,
     weekday: "long",
     day: "numeric",
     month: "long",

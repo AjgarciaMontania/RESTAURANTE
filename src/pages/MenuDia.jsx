@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { doc, onSnapshot, setDoc } from "firebase/firestore";
-import { db, hoy } from "../firebase";
+import { db, hoy, ZONA } from "../firebase";
 
 const VACIO = { caldos: [], proteinas: [], adicionales: [], especiales: [] };
 const uid = () => Math.random().toString(36).slice(2, 9);
@@ -73,7 +73,8 @@ export default function MenuDia() {
 
   if (cargando) return <p className="empty">Cargando menú…</p>;
 
-  const f = new Date(fecha + "T12:00:00").toLocaleDateString("es-CO", {
+  const f = new Date(fecha + "T12:00:00Z").toLocaleDateString("es-CO", {
+    timeZone: ZONA,
     weekday: "long",
     day: "numeric",
     month: "long",
