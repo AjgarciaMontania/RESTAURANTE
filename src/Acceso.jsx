@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { doc, onSnapshot } from "firebase/firestore";
-import { db, hashPin } from "./firebase";
+import { db, hashPin, recordar } from "./firebase";
 
 const CLAVE_LOCAL = "restaurante.acceso";
 const TECLAS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "⌫"];
@@ -33,7 +33,7 @@ export default function Acceso({ children }) {
   useEffect(() => {
     if (hashGuardado === undefined) return;
     if (!hashGuardado) return setAutorizado(true);
-    setAutorizado(localStorage.getItem(CLAVE_LOCAL) === hashGuardado);
+    setAutorizado(recordar.leer(CLAVE_LOCAL) === hashGuardado);
   }, [hashGuardado]);
 
   const marcar = async (nuevo) => {
@@ -42,7 +42,7 @@ export default function Acceso({ children }) {
     if (nuevo.length < 4) return;
 
     if ((await hashPin(nuevo)) === hashGuardado) {
-      localStorage.setItem(CLAVE_LOCAL, hashGuardado);
+      recordar.guardar(CLAVE_LOCAL, hashGuardado);
       setAutorizado(true);
     } else {
       setError("PIN incorrecto");

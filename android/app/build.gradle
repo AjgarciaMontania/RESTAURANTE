@@ -16,8 +16,27 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    // Firma fija de la casa.
+    //
+    // Sin esto, cada compilación en GitHub genera una llave distinta y Android
+    // rechaza la actualización con "conflicto con un paquete", obligando a
+    // desinstalar (y perdiendo el PIN recordado y los datos guardados).
+    // Con una llave fija, cada APK nuevo se instala encima del anterior.
+    signingConfigs {
+        casa {
+            storeFile file('restaurante.keystore')
+            storePassword 'restaurante2026'
+            keyAlias 'restaurante'
+            keyPassword 'restaurante2026'
+        }
+    }
+
     buildTypes {
+        debug {
+            signingConfig signingConfigs.casa
+        }
         release {
+            signingConfig signingConfigs.casa
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }

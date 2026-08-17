@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { doc, onSnapshot, setDoc } from "firebase/firestore";
-import { db, hashPin } from "../firebase";
+import { db, hashPin, recordar } from "../firebase";
 import { PRECIOS_DEF } from "../lib/negocio";
 
 const CAMPOS = [
@@ -35,10 +35,18 @@ export default function Ajustes() {
     await setDoc(doc(db, "config", "precios"), { [campo]: valor }, { merge: true });
   };
 
+  const quitarPin = async () => {
+    if (!confirm("¿Quitar el PIN? Cualquiera con la dirección podrá entrar.")) return;
+    await setDoc(doc(db, "config", "acceso"), { pinHash: "" });
+    setOk(true);
+    setTimeout(() => setOk(false), 1800);
+  };
+
   const guardarPin = async () => {
     if (!/^\d{4}$/.test(pin)) return alert("El PIN debe ser de 4 dígitos.");
-    await setDoc(doc(db, "config", "acceso"), { pinHash: await hashPin(pin) });
-    localStorage.setItem("restaurante.acceso", await hashPin(pin));
+    const h = await hashPin(pin);
+    await setDoc(doc(db, "config", "acceso"), { pinHash: h });
+    recordar.guardar("restaurante.acceso", h);
     setPin("");
     setOk(true);
     setTimeout(() => setOk(false), 1800);
@@ -148,6 +156,16 @@ export default function Ajustes() {
             {tienePin ? "Cambiar" : "Activar"}
           </button>
         </div>
+
+        {tienePin && (
+          <button
+            className="btn block del"
+            style={{ marginTop: 10 }}
+            onClick={quitarPin}
+          >
+            Quitar el PIN
+          </button>
+        )}
       </div>
 
       {ok && <div className="toast">Guardado ✓</div>}

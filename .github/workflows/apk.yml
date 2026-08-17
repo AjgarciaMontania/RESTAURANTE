@@ -35,11 +35,14 @@ jobs:
       - name: Compilar APK
         run: |
           chmod +x android/gradlew
-          cd android && ./gradlew assembleDebug --no-daemon
+          cd android && ./gradlew assembleRelease --no-daemon
+
+      - name: Renombrar el APK
+        run: mv android/app/build/outputs/apk/release/app-release.apk Restaurante.apk
 
       - name: Publicar el APK
         uses: actions/upload-artifact@v4
         with:
           name: Restaurante-APK
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          path: Restaurante.apk
           retention-days: 90
