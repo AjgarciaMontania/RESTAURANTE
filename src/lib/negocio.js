@@ -114,5 +114,34 @@ export const ETIQUETA_TIPO = {
 export const esAlmuerzo = (tipo) =>
   tipo === "almuerzo_normal" || tipo === "almuerzo_especial";
 
+/**
+ * Estado de cobro de un pedido.
+ *
+ * Un pedido nace "porCobrar": se sirve primero y se liquida cuando el cliente
+ * termina. Los pedidos viejos, de antes de que existiera el cobro aparte, se
+ * dan por pagados para no dañar el historial.
+ */
+export function estadoPago(p) {
+  if (p.pago) return p.pago;
+  if (p.fiado) return "fiado";
+  return "pagado";
+}
+
+/** Lo que efectivamente entró a la caja por este pedido. */
+export function entroACaja(p) {
+  const e = estadoPago(p);
+  if (e === "pagado") return p.total || 0;
+  if (e === "parcial") return p.abonado || 0;
+  return 0;
+}
+
+/** Lo que quedó debiendo este pedido. */
+export function quedoDebiendo(p) {
+  const e = estadoPago(p);
+  if (e === "fiado") return p.total || 0;
+  if (e === "parcial") return Math.max(0, (p.total || 0) - (p.abonado || 0));
+  return 0;
+}
+
 export const totalLineas = (items) =>
   items.reduce((s, i) => s + i.cant * i.precioUnit, 0);

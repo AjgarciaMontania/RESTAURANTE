@@ -315,6 +315,15 @@ input.l-input {
 
 .acciones { display: flex; gap: 8px; flex-wrap: wrap; }
 
+/* Panel de cobro dentro de un pedido pendiente */
+.cobro {
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px;
+  margin-top: 4px;
+}
+
 /* Vista previa del mensaje, como se vería en WhatsApp */
 .burbuja {
   margin-top: 10px; padding: 12px 14px;

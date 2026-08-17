@@ -100,4 +100,50 @@ chk2('Saldo en cero', saldoDe([{ tipo: 'deuda', monto: 5000 }, { tipo: 'abono', 
 chk2('Sin movimientos', saldoDe([]), 0);
 
 console.log(f2 ? `\n❌ ${f2} fallo(s) en fiados` : '\n✅ Fiados: todo pasa');
-process.exit(fallos + f2 ? 1 : 0);
+
+
+// ---------------------------------------------------------------
+// Estados de cobro: qué entra a la caja y qué queda debiendo
+// ---------------------------------------------------------------
+import { entroACaja, estadoPago, quedoDebiendo } from './src/lib/negocio.js';
+
+console.log('\n--- Cobros ---');
+let f3 = 0;
+const chk3 = (nom, real, esp) => {
+  const ok = real === esp;
+  if (!ok) f3++;
+  console.log(`${ok ? '✓' : '✗'} ${nom}  ->  ${real}${ok ? '' : `  (esperado ${esp})`}`);
+};
+
+const recienTomado = { total: 12000, pago: 'porCobrar' };
+chk3('Recién tomado no entra a caja', entroACaja(recienTomado), 0);
+chk3('Recién tomado no es deuda', quedoDebiendo(recienTomado), 0);
+
+const pagado = { total: 12000, pago: 'pagado', abonado: 12000 };
+chk3('Pagado entra completo', entroACaja(pagado), 12000);
+chk3('Pagado no debe nada', quedoDebiendo(pagado), 0);
+
+const fiado = { total: 12000, pago: 'fiado', abonado: 0 };
+chk3('Fiado no entra a caja', entroACaja(fiado), 0);
+chk3('Fiado debe todo', quedoDebiendo(fiado), 12000);
+
+const parcial = { total: 12000, pago: 'parcial', abonado: 8000 };
+chk3('Parcial entra lo abonado', entroACaja(parcial), 8000);
+chk3('Parcial debe la diferencia', quedoDebiendo(parcial), 4000);
+
+// Pedidos viejos, de antes de que existiera el cobro aparte
+chk3('Pedido viejo se da por pagado', estadoPago({ total: 9000 }), 'pagado');
+chk3('Pedido viejo entra a caja', entroACaja({ total: 9000 }), 9000);
+chk3('Pedido viejo marcado fiado', estadoPago({ total: 9000, fiado: true }), 'fiado');
+chk3('Pedido viejo fiado es deuda', quedoDebiendo({ total: 9000, fiado: true }), 9000);
+
+// La caja del día debe cuadrar: caja + fiado + sin cobrar = vendido
+const dia = [recienTomado, pagado, fiado, parcial];
+const enCaja = dia.reduce((s, p) => s + entroACaja(p), 0);
+const debido = dia.reduce((s, p) => s + quedoDebiendo(p), 0);
+const sinCobrar = dia.filter((p) => estadoPago(p) === 'porCobrar').reduce((s, p) => s + p.total, 0);
+const vendido = dia.reduce((s, p) => s + p.total, 0);
+chk3('Caja + fiado + sin cobrar = vendido', enCaja + debido + sinCobrar, vendido);
+
+console.log(f3 ? `\n❌ ${f3} fallo(s) en cobros` : '\n✅ Cobros: todo cuadra');
+process.exit(fallos + f2 + f3 ? 1 : 0);
