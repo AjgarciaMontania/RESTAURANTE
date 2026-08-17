@@ -44,7 +44,7 @@ export default function Cocina() {
     <div className="tv">
       <div className="tv-head">
         <h1>🍽️ COCINA</h1>
-        <span className="muted" style={{ fontSize: 22 }}>
+        <span className="sub">
           {pedidos.length} pendiente{pedidos.length === 1 ? "" : "s"}
         </span>
         <span className="r">{reloj}</span>

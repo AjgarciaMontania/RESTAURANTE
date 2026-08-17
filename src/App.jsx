@@ -4,6 +4,7 @@ import Pedido from "./pages/Pedido.jsx";
 import Cocina from "./pages/Cocina.jsx";
 import Caja from "./pages/Caja.jsx";
 import Ajustes from "./pages/Ajustes.jsx";
+import Acceso from "./Acceso.jsx";
 
 const TABS = [
   { to: "/", ic: "📝", label: "Menú" },
@@ -58,7 +59,9 @@ function Shell() {
 export default function App() {
   return (
     <HashRouter>
-      <Shell />
+      <Acceso>
+        <Shell />
+      </Acceso>
     </HashRouter>
   );
 }

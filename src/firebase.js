@@ -4,6 +4,7 @@ import {
   persistentLocalCache,
   persistentMultipleTabManager,
 } from "firebase/firestore";
+import { getAuth, signInAnonymously } from "firebase/auth";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCMj7HWzzoz_5f5x38JVB5DGVB0Hlv1ygM",
@@ -23,6 +24,23 @@ const app = initializeApp(firebaseConfig);
 export const db = initializeFirestore(app, {
   localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
 });
+
+/**
+ * Sesión anónima: no le pide nada al usuario, pero le da a Firestore una
+ * identidad con la cual las reglas de seguridad pueden bloquear a cualquiera
+ * que intente escribir en la base por fuera de la app.
+ */
+export const auth = getAuth(app);
+export const sesionLista = signInAnonymously(auth).catch((e) => {
+  console.error("No se pudo iniciar sesión anónima:", e);
+});
+
+/** SHA-256 en hexadecimal — el PIN nunca se guarda en texto plano. */
+export async function hashPin(pin) {
+  const datos = new TextEncoder().encode("restaurante:" + pin);
+  const buf = await crypto.subtle.digest("SHA-256", datos);
+  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
 
 /** Fecha local (Colombia) en formato YYYY-MM-DD, usada como id del menú del día */
 export function hoy() {

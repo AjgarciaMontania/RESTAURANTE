@@ -73,19 +73,18 @@ export default function MenuDia() {
 
   if (cargando) return <p className="empty">Cargando menú…</p>;
 
-  const fechaLarga = new Date(fecha + "T12:00:00").toLocaleDateString("es-CO", {
+  const f = new Date(fecha + "T12:00:00").toLocaleDateString("es-CO", {
     weekday: "long",
     day: "numeric",
     month: "long",
   });
+  const fechaLarga = f.charAt(0).toUpperCase() + f.slice(1);
 
   return (
     <>
       <div className="card">
         <h2>📅 Menú del día</h2>
-        <div style={{ textTransform: "capitalize", fontSize: 18, fontWeight: 700 }}>
-          {fechaLarga}
-        </div>
+        <div style={{ fontSize: 19, fontWeight: 700 }}>{fechaLarga}</div>
         <p className="muted" style={{ margin: "6px 0 0", fontSize: 13 }}>
           Todo lo que escribas aquí se guarda solo y aparece de una vez en el talonario.
           En <b>Caldos</b> y <b>Proteínas</b> el precio es opcional: déjalo vacío para usar

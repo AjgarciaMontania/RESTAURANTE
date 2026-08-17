@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { doc, onSnapshot, setDoc } from "firebase/firestore";
-import { db } from "../firebase";
+import { db, hashPin } from "../firebase";
 import { PRECIOS_DEF } from "../lib/negocio";
 
 const CAMPOS = [
@@ -13,14 +13,30 @@ const CAMPOS = [
 export default function Ajustes() {
   const [p, setP] = useState(PRECIOS_DEF);
   const [ok, setOk] = useState(false);
+  const [pin, setPin] = useState("");
+  const [tienePin, setTienePin] = useState(false);
 
-  useEffect(
-    () =>
-      onSnapshot(doc(db, "config", "precios"), (s) => {
-        if (s.exists()) setP({ ...PRECIOS_DEF, ...s.data() });
-      }),
-    []
-  );
+  useEffect(() => {
+    const a = onSnapshot(doc(db, "config", "precios"), (s) => {
+      if (s.exists()) setP({ ...PRECIOS_DEF, ...s.data() });
+    });
+    const b = onSnapshot(doc(db, "config", "acceso"), (s) =>
+      setTienePin(!!s.data()?.pinHash)
+    );
+    return () => {
+      a();
+      b();
+    };
+  }, []);
+
+  const guardarPin = async () => {
+    if (!/^\d{4}$/.test(pin)) return alert("El PIN debe ser de 4 dígitos.");
+    await setDoc(doc(db, "config", "acceso"), { pinHash: await hashPin(pin) });
+    localStorage.setItem("restaurante.acceso", await hashPin(pin));
+    setPin("");
+    setOk(true);
+    setTimeout(() => setOk(false), 1800);
+  };
 
   const guardar = async () => {
     await setDoc(doc(db, "config", "precios"), p, { merge: true });
@@ -87,7 +103,28 @@ export default function Ajustes() {
         </div>
       </div>
 
-      {ok && <div className="toast">Precios guardados ✓</div>}
+      <div className="card">
+        <h2>🔐 PIN de acceso</h2>
+        <p className="muted" style={{ fontSize: 13, margin: "0 0 12px" }}>
+          {tienePin
+            ? "Hay un PIN activo. Si lo cambias, todos los dispositivos tendrán que digitar el nuevo (incluido el TV)."
+            : "Todavía no hay PIN. Ponle uno para que nadie más pueda entrar con la dirección de la página."}
+        </p>
+        <div className="row">
+          <input
+            type="number"
+            inputMode="numeric"
+            placeholder="4 dígitos"
+            value={pin}
+            onChange={(e) => setPin(e.target.value.slice(0, 4))}
+          />
+          <button className="btn primary" onClick={guardarPin} disabled={pin.length !== 4}>
+            {tienePin ? "Cambiar" : "Activar"}
+          </button>
+        </div>
+      </div>
+
+      {ok && <div className="toast">Guardado ✓</div>}
     </>
   );
 }

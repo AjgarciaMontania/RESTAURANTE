@@ -28,6 +28,15 @@ Cada precio base tiene un interruptor **Fijo**: bloqueado al tomar el pedido, o 
 línea por línea. En Caldos y Proteínas el precio de la fila es opcional y, si se digita,
 manda sobre el precio base.
 
+## Seguridad
+
+1. Firebase Console -> **Authentication** -> Sign-in method -> habilitar **Anónimo**
+2. Firebase Console -> **Firestore Database** -> Reglas -> pegar `firestore.rules` -> Publicar
+3. En la app, pestaña **Ajustes** -> **PIN de acceso** -> poner 4 digitos
+
+El PIN se guarda como hash SHA-256, nunca en texto plano. Cada dispositivo lo
+digita una sola vez y queda recordado.
+
 ## Desarrollo
 
 ```bash

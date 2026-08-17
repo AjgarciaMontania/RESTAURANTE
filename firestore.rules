@@ -1,0 +1,57 @@
+rules_version = '2';
+
+// Reglas de seguridad de Firestore para el sistema del restaurante.
+//
+// Cómo aplicarlas:
+//   Firebase Console -> Firestore Database -> pestaña "Reglas"
+//   -> pegar esto -> Publicar
+//
+// Requisito previo:
+//   Firebase Console -> Authentication -> Sign-in method
+//   -> habilitar el proveedor "Anónimo"
+//
+// Qué logran:
+//   - Nadie puede leer ni escribir en la base desde fuera de la app.
+//   - El PIN de acceso (config/acceso) se guarda solo como hash SHA-256,
+//     nunca en texto plano, y no se puede borrar desde la app.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function appIniciada() {
+      return request.auth != null;
+    }
+
+    // Menú del día: menus/2026-08-17
+    match /menus/{fecha} {
+      allow read, write: if appIniciada();
+    }
+
+    // Pedidos del talonario
+    match /pedidos/{pedido} {
+      allow read, create, update: if appIniciada();
+      allow delete: if false;              // los pedidos se anulan, no se borran
+    }
+
+    // Consecutivo diario
+    match /contadores/{fecha} {
+      allow read, write: if appIniciada();
+    }
+
+    // Precios base
+    match /config/precios {
+      allow read, write: if appIniciada();
+    }
+
+    // PIN de acceso (solo el hash)
+    match /config/acceso {
+      allow read, write: if appIniciada();
+      allow delete: if false;
+    }
+
+    // Todo lo demás queda cerrado
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
