@@ -38,10 +38,17 @@ export default function Caja() {
         if (esAlmuerzo(i.tipo)) almuerzos += i.cant;
       }
 
+    const fiados = validos.filter((p) => p.fiado);
+    const enEfectivo = validos.filter((p) => !p.fiado);
+
     return {
       validos,
       anulados: pedidos.length - validos.length,
-      total: validos.reduce((s, p) => s + (p.total || 0), 0),
+      /** Lo que debe haber en la caja: no incluye lo que quedó fiado. */
+      total: enEfectivo.reduce((s, p) => s + (p.total || 0), 0),
+      fiado: fiados.reduce((s, p) => s + (p.total || 0), 0),
+      nFiados: fiados.length,
+      vendido: validos.reduce((s, p) => s + (p.total || 0), 0),
       almuerzos,
       porTipo,
     };
@@ -78,7 +85,10 @@ export default function Caja() {
 
   const exportarCSV = () => {
     const filas = [
-      ["Pedido", "Mesa", "Cliente", "Para llevar", "Cant", "Descripcion", "P.Unitario", "Total"],
+      [
+        "Pedido", "Mesa", "Cliente", "Para llevar", "Fiado", "Cant",
+        "Descripcion", "P.Unitario", "Total",
+      ],
     ];
     for (const p of r.validos)
       for (const i of p.items || [])
@@ -87,12 +97,18 @@ export default function Caja() {
           p.mesa || "",
           p.cliente || "",
           p.paraLlevar ? "Si" : "No",
+          p.fiado ? (p.clienteFiado || "Si") : "No",
           i.cant,
           i.descripcion,
           i.precioUnit,
           i.cant * i.precioUnit,
         ]);
-    filas.push([], ["", "", "", "", "", "", "TOTAL DEL DIA", r.total]);
+    filas.push(
+      [],
+      ["", "", "", "", "", "", "", "EN CAJA", r.total],
+      ["", "", "", "", "", "", "", "FIADO", r.fiado],
+      ["", "", "", "", "", "", "", "VENDIDO", r.vendido]
+    );
 
     const csv = filas.map((f) => f.join(";")).join("\n");
     const url = URL.createObjectURL(new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" }));
@@ -126,10 +142,18 @@ export default function Caja() {
             <div className="l">Pedidos</div>
           </div>
           <div className="kpi">
-            <div className="v">{r.anulados}</div>
-            <div className="l">Anulados</div>
+            <div className="v" style={{ color: r.fiado ? "var(--danger)" : undefined }}>
+              {money(r.fiado)}
+            </div>
+            <div className="l">Fiado ({r.nFiados})</div>
           </div>
         </div>
+
+        <p className="muted" style={{ fontSize: 13, margin: "12px 0 0" }}>
+          Vendido en total <b>{money(r.vendido)}</b> · en caja <b>{money(r.total)}</b> ·
+          por cobrar <b>{money(r.fiado)}</b>
+          {r.anulados > 0 && ` · ${r.anulados} anulado${r.anulados === 1 ? "" : "s"}`}
+        </p>
       </div>
 
       {Object.keys(r.porTipo).length > 0 && (
@@ -176,6 +200,9 @@ export default function Caja() {
                 {p.mesa && <span className="muted">Mesa {p.mesa}</span>}
                 {p.cliente && <span className="muted">{p.cliente}</span>}
                 {p.paraLlevar && <span className="badge llevar">para llevar</span>}
+                {p.fiado && (
+                  <span className="badge fiado">fiado · {p.clienteFiado || "cliente"}</span>
+                )}
                 <span className={"badge " + (p.estado === "entregado" ? "list" : "pend")}>
                   {p.anulado ? "anulado" : p.estado}
                 </span>

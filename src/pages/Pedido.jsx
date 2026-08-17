@@ -3,9 +3,12 @@ import {
   addDoc,
   collection,
   doc,
+  getDocs,
   onSnapshot,
+  query,
   runTransaction,
   serverTimestamp,
+  where,
 } from "firebase/firestore";
 import { db, hoy } from "../firebase";
 import {
@@ -15,6 +18,13 @@ import {
   totalLineas,
   uid,
 } from "../lib/negocio";
+import {
+  PLANTILLAS_DEF,
+  armarMensaje,
+  enlaceWhatsApp,
+  fechaLarga,
+  saldoDe,
+} from "../lib/fiados";
 
 const MENU_VACIO = { caldos: [], proteinas: [], adicionales: [], especiales: [] };
 
@@ -27,6 +37,14 @@ export default function Pedido() {
   const [cliente, setCliente] = useState("");
   const [paraLlevar, setParaLlevar] = useState(false);
   const [items, setItems] = useState([]);
+
+  // Fiado
+  const [fiado, setFiado] = useState(false);
+  const [clientes, setClientes] = useState([]);
+  const [buscaCliente, setBuscaCliente] = useState("");
+  const [clienteFiado, setClienteFiado] = useState(null);
+  const [telNuevo, setTelNuevo] = useState("");
+  const [plantillas, setPlantillas] = useState(PLANTILLAS_DEF);
 
   // Constructor de almuerzo
   const [caldoSel, setCaldoSel] = useState(null);
@@ -44,9 +62,17 @@ export default function Pedido() {
     const b = onSnapshot(doc(db, "config", "precios"), (s) =>
       setPrecios(s.exists() ? { ...PRECIOS_DEF, ...s.data() } : PRECIOS_DEF)
     );
+    const c = onSnapshot(collection(db, "clientes"), (s) =>
+      setClientes(s.docs.map((d) => ({ id: d.id, ...d.data() })))
+    );
+    const d = onSnapshot(doc(db, "config", "mensajes"), (s) =>
+      setPlantillas(s.exists() ? { ...PLANTILLAS_DEF, ...s.data() } : PLANTILLAS_DEF)
+    );
     return () => {
       a();
       b();
+      c();
+      d();
     };
   }, [fecha]);
 
@@ -96,6 +122,26 @@ export default function Pedido() {
 
   const quitar = (id) => setItems((s) => s.filter((i) => i.id !== id));
 
+  const coincidencias = useMemo(() => {
+    const t = buscaCliente.trim().toLowerCase();
+    if (!t) return clientes.slice(0, 6);
+    return clientes.filter((c) => c.nombre.toLowerCase().includes(t)).slice(0, 6);
+  }, [clientes, buscaCliente]);
+
+  /** Registra al cliente sobre la marcha y lo deja elegido para este fiado. */
+  const registrarCliente = async () => {
+    const nombre = buscaCliente.trim();
+    if (!nombre) return;
+    const ref = await addDoc(collection(db, "clientes"), {
+      nombre,
+      telefono: telNuevo.trim(),
+      cedula: "",
+      creado: serverTimestamp(),
+    });
+    setClienteFiado({ id: ref.id, nombre, telefono: telNuevo.trim() });
+    setTelNuevo("");
+  };
+
   const enviar = async () => {
     if (!items.length || enviando) return;
     setEnviando(true);
@@ -109,12 +155,17 @@ export default function Pedido() {
         return n;
       });
 
+      const detalle = items.map((i) => `${i.cant}× ${i.descripcion}`).join(", ");
+
       await addDoc(collection(db, "pedidos"), {
         numero,
         fecha,
         mesa: mesa.trim(),
         cliente: cliente.trim(),
         paraLlevar,
+        fiado,
+        clienteId: fiado ? clienteFiado?.id || "" : "",
+        clienteFiado: fiado ? clienteFiado?.nombre || "" : "",
         items: items.map(({ id, ...r }) => ({ ...r, total: r.cant * r.precioUnit })),
         total,
         estado: "pendiente",
@@ -122,10 +173,42 @@ export default function Pedido() {
         creado: serverTimestamp(),
       });
 
+      // Si queda debiendo: se anota en su cuenta y se le avisa por WhatsApp
+      if (fiado && clienteFiado) {
+        await addDoc(collection(db, "fiados"), {
+          clienteId: clienteFiado.id,
+          clienteNombre: clienteFiado.nombre,
+          tipo: "deuda",
+          monto: total,
+          detalle,
+          numero,
+          fecha,
+          creado: serverTimestamp(),
+        });
+
+        const previos = await getDocs(
+          query(collection(db, "fiados"), where("clienteId", "==", clienteFiado.id))
+        );
+        const saldo = saldoDe(previos.docs.map((d) => d.data()));
+
+        const msg = armarMensaje(plantillas.fiado, {
+          cliente: clienteFiado.nombre,
+          fecha: fechaLarga(fecha),
+          detalle,
+          monto: money(total),
+          saldo: money(Math.max(0, saldo)),
+          negocio: precios.nombreNegocio || "Restaurante",
+        });
+        window.open(enlaceWhatsApp(clienteFiado.telefono, msg), "_blank");
+      }
+
       setItems([]);
       setMesa("");
       setCliente("");
       setParaLlevar(false);
+      setFiado(false);
+      setClienteFiado(null);
+      setBuscaCliente("");
       setToast(`Pedido #${numero} enviado a cocina ✓`);
       setTimeout(() => setToast(""), 2200);
     } catch (e) {
@@ -347,13 +430,87 @@ export default function Pedido() {
           </div>
         )}
 
+        {precios.usarFiados && items.length > 0 && (
+          <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid var(--line)" }}>
+            <div className="seg">
+              <button className={!fiado ? "on" : ""} onClick={() => setFiado(false)}>
+                💵 Paga ahora
+              </button>
+              <button className={fiado ? "on" : ""} onClick={() => setFiado(true)}>
+                📒 Queda debiendo
+              </button>
+            </div>
+
+            {fiado && (
+              <div style={{ marginTop: 10 }}>
+                {clienteFiado ? (
+                  <div className="row">
+                    <div style={{ flex: 1 }}>
+                      <b>{clienteFiado.nombre}</b>
+                      <div className="muted" style={{ fontSize: 13 }}>
+                        {clienteFiado.telefono || "⚠️ sin celular, no se podrá avisar"}
+                      </div>
+                    </div>
+                    <button className="btn chico" onClick={() => setClienteFiado(null)}>
+                      Cambiar
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <input
+                      type="text"
+                      placeholder="Buscar o escribir el nombre del cliente"
+                      value={buscaCliente}
+                      onChange={(e) => setBuscaCliente(e.target.value)}
+                    />
+
+                    {coincidencias.length > 0 && (
+                      <div className="chips" style={{ marginTop: 8 }}>
+                        {coincidencias.map((c) => (
+                          <button key={c.id} className="chip" onClick={() => setClienteFiado(c)}>
+                            {c.nombre}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    {buscaCliente.trim() && coincidencias.length === 0 && (
+                      <>
+                        <input
+                          type="tel"
+                          inputMode="numeric"
+                          placeholder="Celular, para avisarle por WhatsApp"
+                          value={telNuevo}
+                          onChange={(e) => setTelNuevo(e.target.value)}
+                          style={{ marginTop: 8 }}
+                        />
+                        <button
+                          className="btn ghost block"
+                          style={{ marginTop: 8 }}
+                          onClick={registrarCliente}
+                        >
+                          + Registrar «{buscaCliente.trim()}»
+                        </button>
+                      </>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
         <button
           className="btn primary block"
           style={{ marginTop: 14 }}
-          disabled={!items.length || enviando}
+          disabled={!items.length || enviando || (fiado && !clienteFiado)}
           onClick={enviar}
         >
-          {enviando ? "Enviando…" : `📺 Enviar a cocina · ${money(total)}`}
+          {enviando
+            ? "Enviando…"
+            : fiado
+              ? `📒 Enviar y fiar · ${money(total)}`
+              : `📺 Enviar a cocina · ${money(total)}`}
         </button>
       </div>
 

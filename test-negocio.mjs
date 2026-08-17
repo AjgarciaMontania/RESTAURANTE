@@ -52,4 +52,52 @@ chk('Total ejemplo talonario', money(total), '$20.000');
 chk('Almuerzo + adicional', money(totalLineas([{ cant: 1, precioUnit: 10000 }, { cant: 2, precioUnit: 3000 }])), '$16.000');
 
 console.log(fallos ? `\n❌ ${fallos} fallo(s)` : '\n✅ Todas las reglas de cobro pasan');
-process.exit(fallos ? 1 : 0);
+
+
+// ---------------------------------------------------------------
+// Fiados: número de WhatsApp, plantillas y saldos
+// ---------------------------------------------------------------
+import {
+  PLANTILLAS_DEF, armarMensaje, enlaceWhatsApp, numeroWhatsApp, saldoDe,
+} from './src/lib/fiados.js';
+
+console.log('\n--- Fiados ---');
+let f2 = 0;
+const chk2 = (nom, real, esp) => {
+  const ok = real === esp;
+  if (!ok) f2++;
+  console.log(`${ok ? '✓' : '✗'} ${nom}  ->  ${real}${ok ? '' : `  (esperado ${esp})`}`);
+};
+
+chk2('Celular de 10 dígitos lleva 57', numeroWhatsApp('3001234567'), '573001234567');
+chk2('Ya trae indicativo, no lo duplica', numeroWhatsApp('573001234567'), '573001234567');
+chk2('Con espacios y guiones', numeroWhatsApp('300 123-4567'), '573001234567');
+chk2('Vacío devuelve vacío', numeroWhatsApp(''), '');
+
+const msg = armarMensaje(PLANTILLAS_DEF.fiado, {
+  cliente: 'Javier', fecha: '17 de agosto de 2026',
+  detalle: '1× CALDO DE PESCADO', monto: '$12.000', saldo: '$36.000',
+  negocio: 'Doña Rosa',
+});
+chk2('No quedan llaves sin reemplazar', /\{[a-z]+\}/.test(msg), false);
+chk2('Incluye el nombre', msg.includes('Javier'), true);
+chk2('Incluye el saldo', msg.includes('$36.000'), true);
+chk2('Incluye el negocio', msg.includes('Doña Rosa'), true);
+
+// Una llave que no exista se deja tal cual, no rompe
+chk2('Llave desconocida no rompe', armarMensaje('Hola {nadie}', { cliente: 'X' }), 'Hola {nadie}');
+
+chk2('Enlace de WhatsApp', enlaceWhatsApp('3001234567', 'Hola').startsWith('https://wa.me/573001234567?text='), true);
+chk2('Sin celular igual arma enlace', enlaceWhatsApp('', 'Hola'), 'https://wa.me/?text=Hola');
+
+// Saldo: dos consumos y un abono
+chk2('Saldo con abonos', saldoDe([
+  { tipo: 'deuda', monto: 12000 },
+  { tipo: 'deuda', monto: 12000 },
+  { tipo: 'abono', monto: 10000 },
+]), 14000);
+chk2('Saldo en cero', saldoDe([{ tipo: 'deuda', monto: 5000 }, { tipo: 'abono', monto: 5000 }]), 0);
+chk2('Sin movimientos', saldoDe([]), 0);
+
+console.log(f2 ? `\n❌ ${f2} fallo(s) en fiados` : '\n✅ Fiados: todo pasa');
+process.exit(fallos + f2 ? 1 : 0);

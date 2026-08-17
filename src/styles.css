@@ -79,10 +79,11 @@ input, button, select, textarea { font: inherit; color: inherit; }
 }
 .tabbar a {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 3px; padding: 9px 4px; min-height: var(--tap);
-  color: var(--muted); text-decoration: none; font-size: 11px; font-weight: 600;
-  border-top: 3px solid transparent;
+  gap: 3px; padding: 9px 2px; min-height: var(--tap);
+  color: var(--muted); text-decoration: none; font-size: 10.5px; font-weight: 600;
+  border-top: 3px solid transparent; min-width: 0;
 }
+.tabbar a > :last-child { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
 .tabbar a.active { color: var(--verde); border-top-color: var(--oro); }
 .tabbar a .ic { font-size: 20px; line-height: 1; }
 
@@ -313,12 +314,26 @@ input.l-input {
 }
 
 .acciones { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* Vista previa del mensaje, como se vería en WhatsApp */
+.burbuja {
+  margin-top: 10px; padding: 12px 14px;
+  background: #dcf8c6; color: #11241a;
+  border-radius: 12px 12px 12px 3px;
+  font-size: 14px; line-height: 1.5; white-space: pre-wrap;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .12);
+}
+
+textarea {
+  resize: vertical; min-height: 120px;
+}
 .btn.chico { min-height: 38px; padding: 6px 13px; font-size: 13px; }
 
 .badge { font-size: 11px; padding: 3px 10px; border-radius: 20px; font-weight: 700; }
 .badge.pend { background: #fbf0d8; color: #8a6412; }
 .badge.list { background: var(--verde-suave); color: var(--verde); }
 .badge.llevar { background: #f6e6c4; color: #7a5510; }
+.badge.fiado { background: #fbe3e3; color: #8f2f2f; }
 
 /* ---------- Pantalla de cocina (TV) ----------
    Todo se mide en `em` respecto al font-size de .tv, que el componente

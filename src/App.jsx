@@ -2,6 +2,7 @@ import { HashRouter, Routes, Route, NavLink, useLocation } from "react-router-do
 import MenuDia from "./pages/MenuDia.jsx";
 import Pedido from "./pages/Pedido.jsx";
 import Cocina from "./pages/Cocina.jsx";
+import Fiados from "./pages/Fiados.jsx";
 import Caja from "./pages/Caja.jsx";
 import Ajustes from "./pages/Ajustes.jsx";
 import SoloAdmin from "./SoloAdmin.jsx";
@@ -12,6 +13,7 @@ import { useBotonAtras } from "./lib/atras.js";
 const TABS = [
   { to: "/", ic: "📝", label: "Menú" },
   { to: "/pedido", ic: "🧾", label: "Pedido" },
+  { to: "/fiados", ic: "📒", label: "Fiados", admin: true },
   { to: "/cocina", ic: "📺", label: "Cocina", admin: true },
   { to: "/caja", ic: "📊", label: "Caja", admin: true },
   { to: "/ajustes", ic: "⚙️", label: "Ajustes", admin: true },
@@ -55,6 +57,14 @@ function Shell() {
         <Routes>
           <Route path="/" element={<MenuDia />} />
           <Route path="/pedido" element={<Pedido />} />
+          <Route
+            path="/fiados"
+            element={
+              <SoloAdmin titulo="Fiados">
+                <Fiados />
+              </SoloAdmin>
+            }
+          />
           <Route
             path="/caja"
             element={

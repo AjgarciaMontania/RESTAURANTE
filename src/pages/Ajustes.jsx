@@ -4,6 +4,8 @@ import { db, hashPin } from "../firebase";
 import { PRECIOS_DEF } from "../lib/negocio";
 import { useVersionCorta } from "../lib/version.js";
 import { useAdmin } from "../lib/admin.jsx";
+import { PLANTILLAS_DEF, VARIABLES, armarMensaje } from "../lib/fiados.js";
+import { money } from "../lib/negocio";
 
 const OPCIONES = [
   {
@@ -24,6 +26,28 @@ const OPCIONES = [
     si: "El mesero marca si la comida se empaca o se sirve en el local.",
     no: "Apagado: nunca se marca ni se muestra en el TV.",
   },
+  {
+    key: "usarFiados",
+    label: "Fiados",
+    si: "Se puede dejar un pedido debiendo y se lleva la cuenta del cliente.",
+    no: "Apagado: todos los pedidos se cobran de una.",
+  },
+];
+
+/** Datos de mentira para la vista previa del mensaje. */
+const EJEMPLO = {
+  cliente: "Javier Ramírez",
+  fecha: "17 de agosto de 2026",
+  detalle: "1× CALDO DE PESCADO + ARROZ, PECHUGA",
+  monto: money(12000),
+  saldo: money(36000),
+  negocio: "Restaurante",
+};
+
+const MENSAJES = [
+  { key: "fiado", titulo: "Cuando queda debiendo", icono: "📒" },
+  { key: "abono", titulo: "Cuando abona", icono: "💵" },
+  { key: "estado", titulo: "Estado de cuenta", icono: "📄" },
 ];
 
 const CAMPOS = [
@@ -38,6 +62,8 @@ export default function Ajustes() {
   const [ok, setOk] = useState(false);
   const [pin, setPin] = useState("");
   const [tienePin, setTienePin] = useState(false);
+  const [msgs, setMsgs] = useState(PLANTILLAS_DEF);
+  const [verPrevia, setVerPrevia] = useState("");
   const version = useVersionCorta();
   const { salir, entrar } = useAdmin();
 
@@ -48,11 +74,21 @@ export default function Ajustes() {
     const b = onSnapshot(doc(db, "config", "acceso"), (s) =>
       setTienePin(!!s.data()?.pinHash)
     );
+    const c = onSnapshot(doc(db, "config", "mensajes"), (s) =>
+      setMsgs(s.exists() ? { ...PLANTILLAS_DEF, ...s.data() } : PLANTILLAS_DEF)
+    );
     return () => {
       a();
       b();
+      c();
     };
   }, []);
+
+  const guardarMensajes = async () => {
+    await setDoc(doc(db, "config", "mensajes"), msgs, { merge: true });
+    setOk(true);
+    setTimeout(() => setOk(false), 1800);
+  };
 
   /** Las opciones de un solo toque se guardan solas, sin botón. */
   const guardarOpcion = async (campo, valor) => {
@@ -163,6 +199,83 @@ export default function Ajustes() {
             </button>
           ))}
         </div>
+      </div>
+
+      <div className="card">
+        <h2>💬 Mensajes de WhatsApp</h2>
+        <p className="muted" style={{ fontSize: 13, margin: "0 0 12px" }}>
+          Escríbelos como quieras. Lo que va entre llaves se reemplaza por los datos
+          reales al momento de enviar.
+        </p>
+
+        <div style={{ fontWeight: 700, marginBottom: 6 }}>Nombre del negocio</div>
+        <input
+          type="text"
+          placeholder="Ej: Restaurante Doña Rosa"
+          value={p.nombreNegocio ?? ""}
+          onChange={(e) => setP({ ...p, nombreNegocio: e.target.value })}
+          onBlur={(e) => guardarOpcion("nombreNegocio", e.target.value)}
+        />
+
+        <div
+          className="muted"
+          style={{
+            fontSize: 12, marginTop: 14, padding: "10px 12px",
+            background: "var(--surface-2)", borderRadius: 9,
+          }}
+        >
+          <b style={{ color: "var(--text)" }}>Palabras que puedes usar</b>
+          {VARIABLES.map((x) => (
+            <div key={x.v} style={{ marginTop: 4 }}>
+              <code>{x.v}</code> — {x.q}
+            </div>
+          ))}
+        </div>
+
+        {MENSAJES.map((m) => (
+          <div key={m.key} style={{ borderTop: "1px solid var(--line)", paddingTop: 12, marginTop: 14 }}>
+            <div style={{ fontWeight: 700, marginBottom: 6 }}>
+              {m.icono} {m.titulo}
+            </div>
+            <textarea
+              rows={8}
+              value={msgs[m.key] ?? ""}
+              onChange={(e) => setMsgs({ ...msgs, [m.key]: e.target.value })}
+              style={{ fontFamily: "ui-monospace, monospace", fontSize: 13, lineHeight: 1.5 }}
+            />
+            <div className="acciones" style={{ marginTop: 8 }}>
+              <button
+                className="btn chico"
+                onClick={() => setVerPrevia(verPrevia === m.key ? "" : m.key)}
+              >
+                {verPrevia === m.key ? "Ocultar" : "Ver ejemplo"}
+              </button>
+              <button
+                className="btn chico"
+                onClick={() => setMsgs({ ...msgs, [m.key]: PLANTILLAS_DEF[m.key] })}
+              >
+                Restaurar
+              </button>
+            </div>
+
+            {verPrevia === m.key && (
+              <div className="burbuja">
+                {armarMensaje(msgs[m.key], {
+                  ...EJEMPLO,
+                  negocio: p.nombreNegocio || EJEMPLO.negocio,
+                  detalle:
+                    m.key === "estado"
+                      ? "• 2026-08-12 — consumo: $12.000\n• 2026-08-15 — abono: $10.000\n• 2026-08-17 — consumo: $12.000"
+                      : EJEMPLO.detalle,
+                })}
+              </div>
+            )}
+          </div>
+        ))}
+
+        <button className="btn primary block" style={{ marginTop: 14 }} onClick={guardarMensajes}>
+          Guardar mensajes
+        </button>
       </div>
 
       <div className="card">

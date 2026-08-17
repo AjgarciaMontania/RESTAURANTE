@@ -24,6 +24,10 @@ export const PRECIOS_DEF = {
    * del TV, para que la pantalla no se llene. 0 = nunca, solo a mano.
    */
   autoEntregarMin: 30,
+  /** Permite marcar un pedido como fiado y llevar la cuenta del cliente. */
+  usarFiados: true,
+  /** Aparece al final de los mensajes de WhatsApp. */
+  nombreNegocio: "Restaurante",
   almuerzoNormal: 10000,
   almuerzoNormalFijo: true,
   almuerzoEspecial: 13000,
@@ -33,6 +37,15 @@ export const PRECIOS_DEF = {
   soloSeco: 8000,
   soloSecoFijo: true,
 };
+
+/**
+ * Zona horaria del restaurante.
+ *
+ * Se fija a propósito: si un celular o un TV Box tiene mal la hora o la zona,
+ * la app seguiría mostrando la hora de Colombia y, sobre todo, los pedidos
+ * seguirían cayendo en el día correcto.
+ */
+export const ZONA = "America/Bogota";
 
 export const money = (n) =>
   "$" + Math.round(Number(n) || 0).toLocaleString("es-CO");

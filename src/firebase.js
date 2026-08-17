@@ -5,6 +5,9 @@ import {
   persistentMultipleTabManager,
 } from "firebase/firestore";
 import { getAuth, signInAnonymously } from "firebase/auth";
+import { ZONA } from "./lib/negocio";
+
+export { ZONA };
 
 const firebaseConfig = {
   apiKey: "AIzaSyCMj7HWzzoz_5f5x38JVB5DGVB0Hlv1ygM",
@@ -80,15 +83,6 @@ export const recordar = {
     }
   },
 };
-
-/**
- * Zona horaria del restaurante.
- *
- * Se fija a propósito: si un celular o un TV Box tiene mal la hora o la zona,
- * la app seguiría mostrando la hora de Colombia y, sobre todo, los pedidos
- * seguirían cayendo en el día correcto.
- */
-export const ZONA = "America/Bogota";
 
 const fmtFecha = new Intl.DateTimeFormat("en-CA", {
   timeZone: ZONA,
