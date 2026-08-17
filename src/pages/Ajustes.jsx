@@ -3,6 +3,27 @@ import { doc, onSnapshot, setDoc } from "firebase/firestore";
 import { db, hashPin, recordar } from "../firebase";
 import { PRECIOS_DEF } from "../lib/negocio";
 
+const OPCIONES = [
+  {
+    key: "usarMesas",
+    label: "Número de mesa",
+    si: "El talonario pide la mesa y el TV la muestra en la comanda.",
+    no: "Apagado: el talonario arranca directo en el menú.",
+  },
+  {
+    key: "usarCliente",
+    label: "Nombre del cliente",
+    si: "Se puede escribir a nombre de quién va el pedido; aparece en el TV.",
+    no: "Apagado: no se pide el nombre.",
+  },
+  {
+    key: "usarParaLlevar",
+    label: "Para llevar",
+    si: "El mesero marca si la comida se empaca o se sirve en el local.",
+    no: "Apagado: nunca se marca ni se muestra en el TV.",
+  },
+];
+
 const CAMPOS = [
   { key: "almuerzoNormal", label: "Almuerzo normal", ayuda: "Caldo + proteína en un solo cobro" },
   { key: "almuerzoEspecial", label: "Almuerzo especial", ayuda: "Cuando el pedido se marca como Especial" },
@@ -61,23 +82,26 @@ export default function Ajustes() {
   return (
     <>
       <div className="card">
-        <h2>🪑 Mesas</h2>
-        <div
-          className={"switch" + (p.usarMesas ? " on" : "")}
-          onClick={() => guardarOpcion("usarMesas", !p.usarMesas)}
-          role="switch"
-          aria-checked={!!p.usarMesas}
-        >
-          <span className="pista" />
-          <span className="txt">
-            Pedir el número de mesa
-            <small>
-              {p.usarMesas
-                ? "El talonario muestra la casilla de mesa y el TV la indica en cada comanda."
-                : "Apagado: el talonario arranca directo en el menú, sin esa casilla."}
-            </small>
-          </span>
-        </div>
+        <h2>📋 Datos del pedido</h2>
+        <p className="muted" style={{ fontSize: 13, margin: "0 0 6px" }}>
+          Prende solo lo que uses. Lo que apagues desaparece del talonario y del TV.
+        </p>
+        {OPCIONES.map((o) => (
+          <div
+            key={o.key}
+            className={"switch" + (p[o.key] ? " on" : "")}
+            onClick={() => guardarOpcion(o.key, !p[o.key])}
+            role="switch"
+            aria-checked={!!p[o.key]}
+            style={{ borderTop: "1px solid var(--line)", paddingTop: 12, marginTop: 10 }}
+          >
+            <span className="pista" />
+            <span className="txt">
+              {o.label}
+              <small>{p[o.key] ? o.si : o.no}</small>
+            </span>
+          </div>
+        ))}
       </div>
 
       <div className="card">

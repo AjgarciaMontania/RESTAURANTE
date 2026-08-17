@@ -45,11 +45,22 @@ export default function Caja() {
   };
 
   const exportarCSV = () => {
-    const filas = [["Pedido", "Mesa", "Cant", "Descripcion", "P.Unitario", "Total"]];
+    const filas = [
+      ["Pedido", "Mesa", "Cliente", "Para llevar", "Cant", "Descripcion", "P.Unitario", "Total"],
+    ];
     for (const p of r.validos)
       for (const i of p.items || [])
-        filas.push([p.numero, p.mesa || "", i.cant, i.descripcion, i.precioUnit, i.cant * i.precioUnit]);
-    filas.push([], ["", "", "", "", "TOTAL DEL DIA", r.total]);
+        filas.push([
+          p.numero,
+          p.mesa || "",
+          p.cliente || "",
+          p.paraLlevar ? "Si" : "No",
+          i.cant,
+          i.descripcion,
+          i.precioUnit,
+          i.cant * i.precioUnit,
+        ]);
+    filas.push([], ["", "", "", "", "", "", "TOTAL DEL DIA", r.total]);
 
     const csv = filas.map((f) => f.join(";")).join("\n");
     const url = URL.createObjectURL(new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" }));
@@ -138,6 +149,8 @@ export default function Caja() {
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <b>#{p.numero}</b>
                 {p.mesa && <span className="muted">Mesa {p.mesa}</span>}
+                {p.cliente && <span className="muted">{p.cliente}</span>}
+                {p.paraLlevar && <span className="badge llevar">para llevar</span>}
                 <span className={"badge " + (p.estado === "entregado" ? "list" : "pend")}>
                   {p.anulado ? "anulado" : p.estado}
                 </span>

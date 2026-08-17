@@ -24,6 +24,8 @@ export default function Pedido() {
   const [precios, setPrecios] = useState(PRECIOS_DEF);
 
   const [mesa, setMesa] = useState("");
+  const [cliente, setCliente] = useState("");
+  const [paraLlevar, setParaLlevar] = useState(false);
   const [items, setItems] = useState([]);
 
   // Constructor de almuerzo
@@ -111,6 +113,8 @@ export default function Pedido() {
         numero,
         fecha,
         mesa: mesa.trim(),
+        cliente: cliente.trim(),
+        paraLlevar,
         items: items.map(({ id, ...r }) => ({ ...r, total: r.cant * r.precioUnit })),
         total,
         estado: "pendiente",
@@ -120,6 +124,8 @@ export default function Pedido() {
 
       setItems([]);
       setMesa("");
+      setCliente("");
+      setParaLlevar(false);
       setToast(`Pedido #${numero} enviado a cocina ✓`);
       setTimeout(() => setToast(""), 2200);
     } catch (e) {
@@ -146,16 +152,41 @@ export default function Pedido() {
 
   return (
     <>
-      {precios.usarMesas && (
+      {(precios.usarMesas || precios.usarCliente || precios.usarParaLlevar) && (
         <div className="card">
-          <h2>🪑 Mesa</h2>
-          <input
-            type="text"
-            inputMode="numeric"
-            placeholder="Número de mesa (ej: 4)"
-            value={mesa}
-            onChange={(e) => setMesa(e.target.value)}
-          />
+          <h2>📋 Datos del pedido</h2>
+
+          {precios.usarMesas && (
+            <input
+              type="text"
+              inputMode="numeric"
+              placeholder="Número de mesa (ej: 4)"
+              value={mesa}
+              onChange={(e) => setMesa(e.target.value)}
+              style={{ marginBottom: precios.usarCliente || precios.usarParaLlevar ? 8 : 0 }}
+            />
+          )}
+
+          {precios.usarCliente && (
+            <input
+              type="text"
+              placeholder="Nombre del cliente (opcional)"
+              value={cliente}
+              onChange={(e) => setCliente(e.target.value)}
+              style={{ marginBottom: precios.usarParaLlevar ? 8 : 0 }}
+            />
+          )}
+
+          {precios.usarParaLlevar && (
+            <div className="seg">
+              <button className={!paraLlevar ? "on" : ""} onClick={() => setParaLlevar(false)}>
+                🍽️ Para la mesa
+              </button>
+              <button className={paraLlevar ? "on" : ""} onClick={() => setParaLlevar(true)}>
+                🥡 Para llevar
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -254,7 +285,16 @@ export default function Pedido() {
       )}
 
       <div className="card">
-        <h2>🧾 Pedido {mesa && <span className="count">Mesa {mesa}</span>}</h2>
+        <h2>
+          🧾 Pedido
+          {(mesa || cliente || paraLlevar) && (
+            <span className="count">
+              {[mesa && `Mesa ${mesa}`, cliente, paraLlevar && "Para llevar"]
+                .filter(Boolean)
+                .join(" · ")}
+            </span>
+          )}
+        </h2>
 
         {items.length === 0 ? (
           <p className="empty">Todavía no has agregado nada</p>

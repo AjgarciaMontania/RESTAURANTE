@@ -12,8 +12,13 @@
  */
 
 export const PRECIOS_DEF = {
-  /** Si está apagado, el talonario no pide número de mesa. */
+  // Campos opcionales del talonario. Cada uno se prende o apaga en Ajustes.
+  /** Casilla de número de mesa. */
   usarMesas: true,
+  /** Casilla de nombre del cliente. */
+  usarCliente: false,
+  /** Botón para marcar que la comida se empaca para llevar. */
+  usarParaLlevar: true,
   almuerzoNormal: 10000,
   almuerzoNormalFijo: true,
   almuerzoEspecial: 13000,

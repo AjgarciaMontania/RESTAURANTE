@@ -15,19 +15,10 @@ export default function Cocina() {
   const [fecha, setFecha] = useState(hoy());
   const [pedidos, setPedidos] = useState([]);
   const [entregados, setEntregados] = useState(0);
-  const [usarMesas, setUsarMesas] = useState(true);
   const [ahora, setAhora] = useState(Date.now());
   const [zoom, setZoom] = useState(() => Number(recordar.leer(CLAVE_ZOOM)) || 1);
 
   const tablero = useRef(null);
-
-  useEffect(
-    () =>
-      onSnapshot(doc(db, "config", "precios"), (s) =>
-        setUsarMesas(s.exists() ? s.data().usarMesas !== false : true)
-      ),
-    []
-  );
 
   // Reloj + cambio automático de día a medianoche
   useEffect(() => {
@@ -72,7 +63,7 @@ export default function Cocina() {
     ajustar();
     window.addEventListener("resize", ajustar);
     return () => window.removeEventListener("resize", ajustar);
-  }, [pedidos, zoom, usarMesas, entregados]);
+  }, [pedidos, entregados, zoom]);
 
   const cambiarZoom = (paso) => {
     const z = Math.min(1.6, Math.max(0.6, Number((zoom + paso).toFixed(2))));
@@ -144,12 +135,13 @@ export default function Cocina() {
 
                 <header className="ticket-head">
                   <span className="num">#{p.numero}</span>
-                  {p.mesa ? (
-                    <span className="mesa">Mesa {p.mesa}</span>
-                  ) : (
-                    usarMesas && <span className="mesa llevar">Para llevar</span>
-                  )}
+                  <div className="etiquetas">
+                    {p.mesa && <span className="etq mesa">Mesa {p.mesa}</span>}
+                    {p.paraLlevar && <span className="etq llevar">🥡 Para llevar</span>}
+                  </div>
                 </header>
+
+                {p.cliente && <div className="ticket-cliente">{p.cliente}</div>}
 
                 <ul className="ticket-items">
                   {(p.items || []).map((i, k) => (
