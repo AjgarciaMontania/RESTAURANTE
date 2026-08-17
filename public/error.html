@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Sin conexión — Restaurante</title>
+    <style>
+      body {
+        margin: 0; min-height: 100vh;
+        display: flex; align-items: center; justify-content: center;
+        padding: 28px;
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        background: linear-gradient(180deg, #1a4634 0%, #143528 100%);
+        color: #eef3ef; text-align: center;
+      }
+      .caja { max-width: 380px; }
+      svg { width: 78px; height: 78px; margin-bottom: 18px; }
+      h1 {
+        font-family: Georgia, "Times New Roman", serif; font-weight: 400;
+        font-size: 26px; letter-spacing: 1px; margin: 0 0 10px; color: #e9c87d;
+      }
+      p { color: #a8c2b3; font-size: 15px; line-height: 1.55; margin: 0 0 24px; }
+      button {
+        min-height: 50px; padding: 0 28px; font-size: 16px; font-weight: 700;
+        border: 0; border-radius: 10px; cursor: pointer;
+        background: #e0b45c; color: #2a2010;
+      }
+      button:active { transform: scale(.98); }
+      small { display: block; margin-top: 22px; color: #7f9488; font-size: 12px; }
+    </style>
+  </head>
+  <body>
+    <div class="caja">
+      <svg viewBox="0 0 512 512" fill="none">
+        <circle cx="256" cy="258" r="128" stroke="#d8a94f" stroke-width="20" />
+        <circle cx="256" cy="258" r="72" fill="#d8a94f" opacity=".16" />
+        <g fill="#f0e7d6">
+          <rect x="106" y="92" width="17" height="122" rx="8.5" />
+          <rect x="139" y="92" width="17" height="122" rx="8.5" />
+          <rect x="172" y="92" width="17" height="122" rx="8.5" />
+          <path d="M100 196h89c0 33-18 52-35 57v155a10 10 0 0 1-20 0V253c-17-5-34-24-34-57z" />
+          <path
+            d="M372 92c27 0 44 35 44 87 0 36-13 59-30 67v162a15 15 0 0 1-30 0V246c-17-8-30-31-30-67 0-52 19-87 46-87z"
+          />
+        </g>
+      </svg>
+
+      <h1>Sin conexión</h1>
+      <p>
+        No se pudo cargar la aplicación. Revisa que el celular tenga internet o
+        WiFi y vuelve a intentar.
+      </p>
+
+      <button onclick="location.href='https://ajgarciamontania.github.io/RESTAURANTE/'">
+        Reintentar
+      </button>
+
+      <small>Los pedidos viajan por internet, así que la app necesita conexión.</small>
+    </div>
+  </body>
+</html>

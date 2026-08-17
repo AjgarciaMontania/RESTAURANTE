@@ -2,8 +2,13 @@
   "appId": "com.restaurante.pedidos",
   "appName": "Restaurante",
   "webDir": "dist",
+  "backgroundColor": "#1f5c45",
+  "server": {
+    "url": "https://ajgarciamontania.github.io/RESTAURANTE/",
+    "cleartext": false,
+    "errorPath": "error.html"
+  },
   "android": {
     "allowMixedContent": false
-  },
-  "backgroundColor": "#0f1216"
+  }
 }

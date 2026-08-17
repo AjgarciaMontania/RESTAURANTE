@@ -50,8 +50,18 @@ Cada push a `main` despliega solo a GitHub Pages (`.github/workflows/deploy.yml`
 
 ## APK Android
 
+El APK es una ventana sobre el sitio publicado (`server.url` en
+`capacitor.config.json`), así que **se actualiza solo** con cada despliegue y no
+hay que reinstalarlo. Si no hay conexión muestra `public/error.html`.
+
+Se compila solo en GitHub Actions (`.github/workflows/apk.yml`) y queda como
+artifact. Para compilarlo a mano:
+
 ```bash
-npm run build:apk     # compila con rutas relativas
+npm run build:apk
 npx cap sync android
-cd android && ./gradlew assembleDebug
+cd android && ./gradlew assembleRelease
 ```
+
+La firma es fija (`android/app/restaurante.keystore`), así cada APK nuevo se
+instala encima del anterior sin desinstalar.
