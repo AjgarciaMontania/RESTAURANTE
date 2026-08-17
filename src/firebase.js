@@ -72,6 +72,13 @@ export const recordar = {
       console.warn("No se pudo recordar este dispositivo:", e);
     }
   },
+  borrar(k) {
+    try {
+      localStorage.removeItem(k);
+    } catch {
+      /* nada que hacer */
+    }
+  },
 };
 
 /** Fecha local (Colombia) en formato YYYY-MM-DD, usada como id del menú del día */

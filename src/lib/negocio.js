@@ -19,6 +19,11 @@ export const PRECIOS_DEF = {
   usarCliente: false,
   /** Botón para marcar que la comida se empaca para llevar. */
   usarParaLlevar: true,
+  /**
+   * Minutos tras los cuales la comanda se marca sola como entregada y sale
+   * del TV, para que la pantalla no se llene. 0 = nunca, solo a mano.
+   */
+  autoEntregarMin: 30,
   almuerzoNormal: 10000,
   almuerzoNormalFijo: true,
   almuerzoEspecial: 13000,

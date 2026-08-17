@@ -301,6 +301,20 @@ input.l-input {
 .kpi.total .v { color: #fdfbf6; }
 .kpi.total .l { color: rgba(253, 251, 246, .75); }
 
+/* Fila de un pedido en el cierre de caja */
+.ped { border-top: 1px solid var(--line); padding: 11px 0; }
+.ped.anulado { opacity: .45; }
+.ped-cab { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 9px; }
+.ped-cab .num { font-size: 16px; }
+.ped-cab .muted { font-size: 14px; }
+.ped-cab .plata {
+  margin-left: auto; font-size: 16px; white-space: nowrap;
+  font-variant-numeric: tabular-nums; color: var(--verde);
+}
+
+.acciones { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn.chico { min-height: 38px; padding: 6px 13px; font-size: 13px; }
+
 .badge { font-size: 11px; padding: 3px 10px; border-radius: 20px; font-weight: 700; }
 .badge.pend { background: #fbf0d8; color: #8a6412; }
 .badge.list { background: var(--verde-suave); color: var(--verde); }
@@ -402,10 +416,15 @@ input.l-input {
 .ticket-head .etq.mesa { background: #eae1cd; color: #6b5a3f; }
 .ticket-head .etq.llevar { background: #f6dfae; color: #7a5510; box-shadow: inset 0 0 0 2px #d8a94f; }
 
+/* Banda del cliente: quién recibe el plato tiene que verse de una. */
 .ticket-cliente {
-  padding: .55em 1.1em 0; font-size: 1.15em; font-weight: 700; color: #1f5c45;
-  overflow-wrap: anywhere;
+  display: flex; align-items: center; gap: .5em;
+  margin: 0; padding: .5em 1.1em;
+  background: #e6f0ea; border-bottom: 1px solid #cadbd1;
+  color: #1f5c45; font-size: 1.3em; font-weight: 800;
+  letter-spacing: .02em; overflow-wrap: anywhere;
 }
+.ticket-cliente svg { width: 1.05em; height: 1.05em; flex: none; opacity: .75; }
 
 .ticket-items { margin: 0; padding: .8em 1.1em .2em; list-style: none; }
 .ticket-items li {
@@ -439,6 +458,12 @@ input.l-input {
 }
 .btn-listo:active { background: #2f7d5f; transform: scale(.98); }
 
+.tv-version {
+  position: fixed; right: .7em; bottom: .5em;
+  font-size: .72em; color: rgba(238, 243, 239, .35);
+  font-variant-numeric: tabular-nums; letter-spacing: .05em;
+}
+
 /* ---- Sin comandas ---- */
 .tv-empty {
   display: grid; place-items: center; align-content: center;
@@ -456,33 +481,27 @@ input.l-input {
   to { opacity: 1; transform: none; }
 }
 
-/* ---------- Pantalla de acceso (PIN) ---------- */
-.acceso {
-  min-height: 100vh; display: grid; place-items: center; padding: 24px;
-  background: var(--verde);
+/* ---------- Bloqueo por PIN (Caja y Ajustes) ---------- */
+.bloqueo { text-align: center; padding: 26px 20px 22px; max-width: 360px; margin: 8px auto; }
+.bloqueo .candado {
+  width: 58px; height: 58px; border-radius: 50%; margin: 0 auto 12px;
+  display: grid; place-items: center; font-size: 26px; background: var(--surface-2);
 }
-.acceso .caja {
-  background: var(--surface); border-radius: 16px; padding: 30px 26px;
-  width: 100%; max-width: 340px; text-align: center;
-  box-shadow: 0 18px 50px rgba(0, 0, 0, .25);
+.bloqueo h3 {
+  font-family: var(--serif); font-weight: 400; font-size: 22px;
+  margin: 0 0 4px; color: var(--verde);
 }
-.acceso .marca {
-  width: 62px; height: 62px; border-radius: 50%; margin: 0 auto 14px;
-  display: grid; place-items: center; font-size: 30px; background: var(--oro-claro);
-}
-.acceso h1 {
-  font-family: var(--serif); font-weight: 400; font-size: 24px;
-  letter-spacing: 1.5px; margin: 0 0 4px; color: var(--verde);
-}
-.acceso p { color: var(--muted); font-size: 14px; margin: 0 0 20px; }
-.acceso .puntos { display: flex; justify-content: center; gap: 12px; margin-bottom: 22px; }
-.acceso .punto {
+.bloqueo p { color: var(--muted); font-size: 14px; margin: 0 0 18px; }
+
+.puntos { display: flex; justify-content: center; gap: 12px; margin-bottom: 18px; }
+.punto {
   width: 15px; height: 15px; border-radius: 50%;
   border: 2px solid var(--line-fuerte); background: transparent;
 }
-.acceso .punto.on { background: var(--verde); border-color: var(--verde); }
-.acceso.error .puntos { animation: sacudir .35s; }
-.acceso .msg { color: var(--danger); font-size: 13px; min-height: 18px; margin: 0 0 12px; font-weight: 600; }
+.punto.on { background: var(--verde); border-color: var(--verde); }
+.bloqueo.error .puntos { animation: sacudir .35s; }
+.msg { color: var(--danger); font-size: 13px; min-height: 18px; margin: 0 0 12px; font-weight: 600; }
+
 .teclado { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 .teclado button {
   min-height: 56px; font-size: 21px; font-weight: 600;
@@ -491,6 +510,13 @@ input.l-input {
 }
 .teclado button:active { background: var(--verde-suave); }
 .teclado button.vacio { border: 0; background: transparent; cursor: default; }
+
+/* Candadito sobre el ícono de la pestaña bloqueada */
+.tabbar .ic { position: relative; }
+.tabbar .llave {
+  position: absolute; right: -9px; top: -4px;
+  font-size: 10px; font-style: normal; line-height: 1;
+}
 
 @keyframes sacudir {
   0%, 100% { transform: translateX(0); }

@@ -27,10 +27,11 @@ service cloud.firestore {
       allow read, write: if appIniciada();
     }
 
-    // Pedidos del talonario
+    // Pedidos del talonario.
+    // Se permite borrar: un pedido mal montado se elimina desde Caja, que solo
+    // abre el administrador con su PIN.
     match /pedidos/{pedido} {
-      allow read, create, update: if appIniciada();
-      allow delete: if false;              // los pedidos se anulan, no se borran
+      allow read, create, update, delete: if appIniciada();
     }
 
     // Consecutivo diario

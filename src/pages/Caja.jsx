@@ -1,5 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
-import { collection, doc, onSnapshot, query, updateDoc, where } from "firebase/firestore";
+import {
+  collection,
+  deleteDoc,
+  doc,
+  onSnapshot,
+  query,
+  updateDoc,
+  where,
+} from "firebase/firestore";
 import { db, hoy } from "../firebase";
 import { ETIQUETA_TIPO, esAlmuerzo, money } from "../lib/negocio";
 
@@ -39,9 +47,33 @@ export default function Caja() {
     };
   }, [pedidos]);
 
+  /** Anular deja el rastro: el pedido se ve tachado pero no suma a la caja. */
   const anular = async (p) => {
-    if (!confirm(`¿Anular el pedido #${p.numero}? No se contará en la caja.`)) return;
+    if (!confirm(`¿Anular el pedido #${p.numero}? Queda registrado pero no suma a la caja.`))
+      return;
     await updateDoc(doc(db, "pedidos", p.id), { anulado: true });
+  };
+
+  const reactivar = (p) => updateDoc(doc(db, "pedidos", p.id), { anulado: false });
+
+  /** Eliminar lo borra de verdad. Para pedidos mal montados que hay que rehacer. */
+  const eliminar = async (p) => {
+    if (
+      !confirm(
+        `¿ELIMINAR el pedido #${p.numero}?\n\nDesaparece por completo y no se puede recuperar. ` +
+          `Si solo quieres que no sume a la caja, usa Anular.`
+      )
+    )
+      return;
+    try {
+      await deleteDoc(doc(db, "pedidos", p.id));
+    } catch (e) {
+      console.error(e);
+      alert(
+        "Firestore no permitió borrar el pedido.\n\n" +
+          "Publica de nuevo las reglas del archivo firestore.rules en la consola de Firebase."
+      );
+    }
   };
 
   const exportarCSV = () => {
@@ -138,29 +170,35 @@ export default function Caja() {
           <p className="empty">No hay pedidos en esta fecha</p>
         ) : (
           pedidos.map((p) => (
-            <div
-              key={p.id}
-              style={{
-                borderTop: "1px solid var(--line)",
-                padding: "10px 0",
-                opacity: p.anulado ? 0.45 : 1,
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <b>#{p.numero}</b>
+            <div key={p.id} className={"ped" + (p.anulado ? " anulado" : "")}>
+              <div className="ped-cab">
+                <b className="num">#{p.numero}</b>
                 {p.mesa && <span className="muted">Mesa {p.mesa}</span>}
                 {p.cliente && <span className="muted">{p.cliente}</span>}
                 {p.paraLlevar && <span className="badge llevar">para llevar</span>}
                 <span className={"badge " + (p.estado === "entregado" ? "list" : "pend")}>
                   {p.anulado ? "anulado" : p.estado}
                 </span>
-                <b style={{ marginLeft: "auto" }}>{money(p.total)}</b>
-                {!p.anulado && (
-                  <button className="btn icon del" onClick={() => anular(p)}>✕</button>
-                )}
+                <b className="plata">{money(p.total)}</b>
               </div>
-              <div className="muted" style={{ fontSize: 13, marginTop: 4 }}>
+
+              <div className="muted" style={{ fontSize: 13, margin: "4px 0 8px" }}>
                 {(p.items || []).map((i) => `${i.cant}× ${i.descripcion}`).join(" · ")}
+              </div>
+
+              <div className="acciones">
+                {p.anulado ? (
+                  <button className="btn chico" onClick={() => reactivar(p)}>
+                    ↩︎ Reactivar
+                  </button>
+                ) : (
+                  <button className="btn chico" onClick={() => anular(p)}>
+                    ⊘ Anular
+                  </button>
+                )}
+                <button className="btn chico del" onClick={() => eliminar(p)}>
+                  🗑 Eliminar
+                </button>
               </div>
             </div>
           ))

@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { collection, doc, onSnapshot, query, updateDoc, where } from "firebase/firestore";
 import { db, hoy, recordar } from "../firebase";
+import { useVersionCorta } from "../lib/version.js";
 
 /** Minutos a partir de los cuales la comanda se marca como atrasada. */
 const AVISO = 10;
@@ -17,8 +18,18 @@ export default function Cocina() {
   const [entregados, setEntregados] = useState(0);
   const [ahora, setAhora] = useState(Date.now());
   const [zoom, setZoom] = useState(() => Number(recordar.leer(CLAVE_ZOOM)) || 1);
+  const [autoMin, setAutoMin] = useState(0);
 
   const tablero = useRef(null);
+  const version = useVersionCorta();
+
+  useEffect(
+    () =>
+      onSnapshot(doc(db, "config", "precios"), (s) =>
+        setAutoMin(s.exists() ? Number(s.data().autoEntregarMin ?? 30) : 30)
+      ),
+    []
+  );
 
   // Reloj + cambio automático de día a medianoche
   useEffect(() => {
@@ -73,6 +84,24 @@ export default function Cocina() {
 
   const entregar = (id) => updateDoc(doc(db, "pedidos", id), { estado: "entregado" });
 
+  /**
+   * Limpieza automática: una comanda que lleva demasiado tiempo en pantalla ya
+   * salió de la cocina, así que se marca sola como entregada y libera espacio.
+   * El botón manual sigue estando para cuando se quiere sacar antes.
+   */
+  useEffect(() => {
+    if (!autoMin) return;
+    const limite = autoMin * 60000;
+    for (const p of pedidos) {
+      const ms = p.creado?.toMillis?.();
+      if (ms && ahora - ms > limite) {
+        updateDoc(doc(db, "pedidos", p.id), { estado: "entregado", autoEntregado: true }).catch(
+          (e) => console.warn("No se pudo cerrar la comanda sola:", e)
+        );
+      }
+    }
+  }, [pedidos, ahora, autoMin]);
+
   const minutos = (p) => {
     const ms = p.creado?.toMillis?.();
     return ms ? Math.max(0, Math.floor((ahora - ms) / 60000)) : 0;
@@ -116,6 +145,10 @@ export default function Cocina() {
         </div>
       </header>
 
+      <span className="tv-version" title="Versión instalada en este equipo">
+        v{version}
+      </span>
+
       {pedidos.length === 0 ? (
         <div className="tv-empty">
           <Plato />
@@ -141,7 +174,12 @@ export default function Cocina() {
                   </div>
                 </header>
 
-                {p.cliente && <div className="ticket-cliente">{p.cliente}</div>}
+                {p.cliente && (
+                  <div className="ticket-cliente">
+                    <Persona />
+                    <span>{p.cliente}</span>
+                  </div>
+                )}
 
                 <ul className="ticket-items">
                   {(p.items || []).map((i, k) => (
@@ -169,6 +207,15 @@ export default function Cocina() {
         </div>
       )}
     </div>
+  );
+}
+
+/** Silueta para el nombre del cliente. */
+function Persona() {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10Zm0 2c-4.4 0-8 2.5-8 5.5V22h16v-2.5c0-3-3.6-5.5-8-5.5Z" />
+    </svg>
   );
 }
 

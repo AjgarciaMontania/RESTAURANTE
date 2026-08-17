@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { doc, onSnapshot, setDoc } from "firebase/firestore";
 import { db, hashPin, recordar } from "../firebase";
 import { PRECIOS_DEF } from "../lib/negocio";
+import { useVersionCorta } from "../lib/version.js";
+import { useAdmin } from "../lib/admin.jsx";
 
 const OPCIONES = [
   {
@@ -36,6 +38,8 @@ export default function Ajustes() {
   const [ok, setOk] = useState(false);
   const [pin, setPin] = useState("");
   const [tienePin, setTienePin] = useState(false);
+  const version = useVersionCorta();
+  const { salir, hayPin } = useAdmin();
 
   useEffect(() => {
     const a = onSnapshot(doc(db, "config", "precios"), (s) => {
@@ -141,6 +145,26 @@ export default function Ajustes() {
       </div>
 
       <div className="card">
+        <h2>🍳 Cocina</h2>
+        <div style={{ fontWeight: 700 }}>Quitar la comanda del TV sola</div>
+        <div className="muted" style={{ fontSize: 12, marginBottom: 10 }}>
+          Pasado este tiempo la comanda se marca como entregada y libera espacio en
+          la pantalla. El botón «Entregado» sigue funcionando para sacarla antes.
+        </div>
+        <div className="chips">
+          {[0, 15, 30, 45, 60].map((m) => (
+            <button
+              key={m}
+              className={"chip" + ((p.autoEntregarMin ?? 30) === m ? " on" : "")}
+              onClick={() => guardarOpcion("autoEntregarMin", m)}
+            >
+              {m === 0 ? "Nunca" : `${m} min`}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="card">
         <h2>📺 Pantalla del TV</h2>
         <p className="muted" style={{ fontSize: 14, margin: "0 0 10px" }}>
           En el TV abre esta misma dirección terminada en <b>#/cocina</b> y déjala en
@@ -181,16 +205,32 @@ export default function Ajustes() {
           </button>
         </div>
 
+        <div
+          className="muted"
+          style={{ fontSize: 13, marginTop: 14, paddingTop: 12, borderTop: "1px solid var(--line)" }}
+        >
+          <b style={{ color: "var(--text)" }}>Qué protege el PIN</b>
+          <div style={{ marginTop: 6 }}>🔓 <b>Menú</b> y <b>Pedido</b> — libres, sin PIN</div>
+          <div>🔓 <b>Cocina</b> — libre, para que el TV arranque solo</div>
+          <div>🔒 <b>Caja</b> y <b>Ajustes</b> — solo administrador</div>
+        </div>
+
         {tienePin && (
-          <button
-            className="btn block del"
-            style={{ marginTop: 10 }}
-            onClick={quitarPin}
-          >
-            Quitar el PIN
-          </button>
+          <>
+            <button className="btn block" style={{ marginTop: 12 }} onClick={salir}>
+              Cerrar sesión de administrador en este equipo
+            </button>
+            <button className="btn block del" style={{ marginTop: 8 }} onClick={quitarPin}>
+              Quitar el PIN
+            </button>
+          </>
         )}
       </div>
+
+      <p className="muted" style={{ textAlign: "center", fontSize: 12, marginBottom: 24 }}>
+        Versión <b>v{version}</b> · si el TV muestra otra, todavía no se ha
+        actualizado
+      </p>
 
       {ok && <div className="toast">Guardado ✓</div>}
     </>
