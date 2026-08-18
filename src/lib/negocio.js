@@ -5,6 +5,7 @@
  *  - Solo caldo           -> se cobra aparte
  *  - Solo proteína (seco) -> se cobra aparte
  *  - Adicional / Especial  -> línea propia con su precio
+ *  - Merienda             -> línea propia con su precio, nunca entra al almuerzo
  *
  * Cada precio base tiene un interruptor "fijo":
  *   fijo = true  -> el precio queda bloqueado al tomar el pedido
@@ -168,6 +169,7 @@ export const ETIQUETA_TIPO = {
   adicional: "Adicionales",
   especial: "Especiales",
   huevo: "Huevos",
+  merienda: "Meriendas",
 };
 
 /** ¿La línea cuenta como almuerzo vendido? */

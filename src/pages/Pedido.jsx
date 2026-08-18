@@ -75,6 +75,8 @@ export default function Pedido() {
   const huevos = conNombre(menu.huevos);
   const adicionales = conNombre(menu.adicionales);
   const especiales = conNombre(menu.especiales);
+  // Fijas: no pasan por el menú de hoy, están disponibles siempre.
+  const meriendas = conNombre(menu.meriendas);
 
   // El huevo cuenta como una proteína más para el precio, pero en la
   // descripción va aparte y rotulado, para que en la cocina no se confunda.
@@ -122,18 +124,33 @@ export default function Pedido() {
     setCant(1);
   };
 
-  const agregarSuelto = (fila, tipo) =>
-    setItems((s) => [
-      ...s,
-      {
-        id: uid(),
-        cant: 1,
-        tipo,
-        descripcion: fila.nombre.toUpperCase(),
-        precioUnit: Number(fila.precio) || 0,
-        fijo: Number(fila.precio) > 0,
-      },
-    ]);
+  /**
+   * Renglón que se cobra aparte del almuerzo.
+   *
+   * `rotulo` antepone la palabra al nombre para que en la cocina no se
+   * confunda con un plato. `acumula` hace que volver a tocar el mismo botón
+   * suba la cantidad en vez de abrir otro renglón: pedir tres empanadas es lo
+   * normal, tener tres renglones de empanada no.
+   */
+  const agregarSuelto = (fila, tipo, { rotulo = "", acumula = false } = {}) => {
+    const descripcion = (rotulo ? `${rotulo}: ` : "") + fila.nombre.toUpperCase();
+    const nueva = {
+      id: uid(),
+      cant: 1,
+      tipo,
+      descripcion,
+      precioUnit: Number(fila.precio) || 0,
+      fijo: Number(fila.precio) > 0,
+    };
+
+    setItems((s) => {
+      if (acumula) {
+        const k = s.findIndex((x) => x.tipo === tipo && x.descripcion === descripcion);
+        if (k >= 0) return s.map((x, j) => (j === k ? { ...x, cant: x.cant + 1 } : x));
+      }
+      return [...s, nueva];
+    });
+  };
 
   const editarItem = (id, campo, valor) =>
     setItems((s) => s.map((i) => (i.id === id ? { ...i, [campo]: valor } : i)));
@@ -192,7 +209,8 @@ export default function Pedido() {
     !proteinas.length &&
     !huevos.length &&
     !adicionales.length &&
-    !especiales.length;
+    !especiales.length &&
+    !meriendas.length;
 
   if (sinMenu)
     return (
@@ -406,6 +424,38 @@ export default function Pedido() {
                 {a.nombre} <span className="p">{money(a.precio)}</span>
               </button>
             ))}
+          </div>
+        </div>
+      )}
+
+      {meriendas.length > 0 && (
+        <div className="card">
+          <h2>
+            🥟 Meriendas
+            <span className="count fija">Siempre</span>
+          </h2>
+          <p className="muted" style={{ fontSize: 12, margin: "0 0 10px" }}>
+            Se cobran aparte. Toca varias veces para subir la cantidad.
+          </p>
+          <div className="chips">
+            {meriendas.map((m) => {
+              const puestas = items
+                .filter((i) => i.tipo === "merienda" && i.descripcion.endsWith(m.nombre.toUpperCase()))
+                .reduce((n, i) => n + i.cant, 0);
+
+              return (
+                <button
+                  key={m.id}
+                  className={"chip" + (puestas ? " on" : "")}
+                  onClick={() =>
+                    agregarSuelto(m, "merienda", { rotulo: "MERIENDA", acumula: true })
+                  }
+                >
+                  {puestas > 0 && <b style={{ marginRight: 6 }}>{puestas}×</b>}
+                  {m.nombre} <span className="p">{money(m.precio)}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
       )}

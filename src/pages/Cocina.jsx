@@ -12,6 +12,8 @@ const EXTRAS = {
   adicional: { texto: "Adicional", clase: "adicional" },
   especial: { texto: "Especial", clase: "especial" },
   huevo: { texto: "Huevo", clase: "huevo" },
+  // La merienda ya viene rotulada en la descripción; no le hace falta insignia.
+  merienda: { clase: "merienda" },
 };
 
 const CLAVE_ZOOM = "restaurante.tvZoom";
@@ -209,7 +211,7 @@ export default function Cocina() {
                         <span className="cant">{i.cant}</span>
                         <span className="desc">
                           {plato || i.descripcion}
-                          {extra && <em className="marca">{extra.texto}</em>}
+                          {extra?.texto && <em className="marca">{extra.texto}</em>}
                           {rotulos.map((r) => (
                             <span key={r.clase} className={"rotulo " + r.clase}>
                               {r.ic} {r.txt}

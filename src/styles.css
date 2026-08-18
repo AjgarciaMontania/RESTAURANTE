@@ -109,6 +109,11 @@ input, button, select, textarea { font: inherit; color: inherit; }
   font-family: system-ui, sans-serif; letter-spacing: 0;
   background: var(--surface-2); padding: 3px 10px; border-radius: 20px;
 }
+/* Secciones que no se marcan cada día: van siempre */
+.card > h2 .count.fija {
+  background: #f6dfae; color: #7a5510; font-weight: 700; letter-spacing: .04em;
+}
+.card.fija { border-left: 4px solid var(--oro); }
 
 /* ---------- Controles ---------- */
 .row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
@@ -183,6 +188,8 @@ input::placeholder { color: #b3a794; }
   box-shadow: 0 2px 8px rgba(31, 92, 69, .22);
 }
 .chip .p { font-size: 12px; opacity: .7; font-weight: 600; }
+/* Chip que solo informa: no se puede tocar */
+.chip.quieto { cursor: default; opacity: .92; box-shadow: none; }
 
 .seg { display: flex; border: 1px solid var(--line-fuerte); border-radius: 9px; overflow: hidden; }
 .seg button {
@@ -496,6 +503,12 @@ textarea {
 .ticket-items li.especial .marca { background: #e8ddf6; color: #5b3a86; }
 .ticket-items li.huevo .cant { background: #c2472f; }
 .ticket-items li.huevo .marca { background: #fadcd5; color: #93331f; }
+/* La merienda no es plato de cocina: se despacha en el mostrador */
+.ticket-items li.merienda .cant { background: #a8631a; }
+.ticket-items li.merienda .desc {
+  color: #7a5510; background: #fbf0d8; border-radius: .4em;
+  padding: .15em .55em; font-weight: 800; letter-spacing: .02em;
+}
 
 .ticket-pie {
   display: flex; align-items: center; gap: .8em;

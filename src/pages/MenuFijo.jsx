@@ -81,6 +81,11 @@ export default function MenuFijo() {
           cuentan como una proteína más y el <b>principio</b> va incluido en el plato. El
           precio de cada fila es opcional y solo manda cuando el plato va solo.
         </p>
+        <p className="muted" style={{ margin: "8px 0 0", fontSize: 13 }}>
+          Las <b>meriendas</b> son la excepción: llevan su propio precio, se cobran
+          siempre aparte y salen todos los días en el talonario sin tener que marcarlas
+          en <b>Menú de hoy</b>.
+        </p>
       </div>
 
       <div className="grid-2">
@@ -88,8 +93,16 @@ export default function MenuFijo() {
           <div className="card" key={s.key}>
             <h2>
               {s.icono} {s.titulo}
-              <span className="count">{menu[s.key].length}</span>
+              <span className={"count" + (s.siempre ? " fija" : "")}>
+                {s.siempre ? "Siempre" : menu[s.key].length}
+              </span>
             </h2>
+
+            {s.nota && (
+              <p className="muted" style={{ margin: "-4px 0 10px", fontSize: 12 }}>
+                {s.nota}
+              </p>
+            )}
 
             {menu[s.key].length === 0 && <p className="empty">Sin filas todavía</p>}
 

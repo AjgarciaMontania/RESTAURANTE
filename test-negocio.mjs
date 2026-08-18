@@ -342,7 +342,7 @@ console.log(f7 ? `\n❌ ${f7} fallo(s) en principios` : '\n✅ Principios: todo 
 // ---------------------------------------------------------------
 // Menú de hoy: filtra el catálogo, y nunca deja al mesero sin nada
 // ---------------------------------------------------------------
-import { menuDelDia, menuVacio } from './src/lib/menu.js';
+import { diarioVacio, menuDelDia, menuVacio } from './src/lib/menu.js';
 
 console.log('\n--- Menu de hoy ---');
 let f8 = 0;
@@ -360,6 +360,7 @@ const catalogo = {
   huevos: [{ id: 'h1', nombre: 'Revueltos' }],
   adicionales: [{ id: 'a1', nombre: 'Jugo' }],
   especiales: [],
+  meriendas: [{ id: 'm1', nombre: 'Empanada', precio: 3000 }, { id: 'm2', nombre: 'Buñuelo', precio: 2000 }],
 };
 
 // Un día normal: se marcó parte del catálogo
@@ -387,6 +388,26 @@ chk8('Ignora lo que ya no esta en el catalogo', r4.menu.proteinas.map(x => x.nom
 
 chk8('menuVacio detecta vacio', menuVacio({ caldos: [], sopas: [] }), true);
 chk8('menuVacio detecta con datos', menuVacio({ caldos: ['x'] }), false);
+
+// --- Meriendas: fijas, van todos los días sin marcarlas ---
+chk8('Meriendas pasan completas aunque no se marquen', r1.menu.meriendas.map(x => x.nombre).join(','), 'Empanada,Buñuelo');
+chk8('  tambien sin seleccion del dia', r2.menu.meriendas.length, 2);
+chk8('  y sin documento del dia', r3.menu.meriendas.length, 2);
+
+// Marcar meriendas no cambia nada: van todas de todas formas
+const r5 = menuDelDia(catalogo, { ...marcado, meriendas: ['m1'] });
+chk8('Marcar una merienda no excluye la otra', r5.menu.meriendas.length, 2);
+
+// Solo meriendas marcadas no cuenta como "menu de hoy armado"
+const r6 = menuDelDia(catalogo, { meriendas: ['m1', 'm2'] });
+chk8('Solo meriendas sigue siendo sin seleccion', r6.sinSeleccion, true);
+chk8('  y por eso muestra todo el catalogo', r6.menu.proteinas.length, 3);
+
+chk8('diarioVacio ignora las meriendas', diarioVacio({ meriendas: ['m1'] }), true);
+chk8('diarioVacio detecta lo marcado', diarioVacio({ sopas: ['s1'] }), false);
+
+// El catálogo puede ser solo meriendas y aun así hay algo que vender
+chk8('menuVacio si cuenta las meriendas', menuVacio({ meriendas: [{ id: 'm1' }] }), false);
 
 console.log(f8 ? `\n❌ ${f8} fallo(s) en menu de hoy` : '\n✅ Menu de hoy: todo pasa');
 process.exit(fallos + f2 + f3 + f4 + f5 + f6 + f7 + f8 ? 1 : 0);

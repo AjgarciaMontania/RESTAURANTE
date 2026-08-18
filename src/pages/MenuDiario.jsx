@@ -2,11 +2,12 @@ import { useEffect, useState } from "react";
 import { doc, getDoc, onSnapshot, setDoc } from "firebase/firestore";
 import { ZONA, db, hoy } from "../firebase";
 import {
-  CLAVES,
+  CLAVES_DIARIAS,
   MENU_ID,
   MENU_VACIO,
   SECCIONES,
   conNombre,
+  diarioVacio,
   idDiario,
   menuVacio,
 } from "../lib/menu";
@@ -19,12 +20,18 @@ const ayer = () => {
   return d.toISOString().slice(0, 10);
 };
 
+const DIARIAS = SECCIONES.filter((s) => !s.siempre);
+const FIJAS = SECCIONES.filter((s) => s.siempre);
+
 /**
  * Lo que hay hoy.
  *
  * Del catálogo se marca lo que se va a ofrecer, y eso es lo único que ve el
  * talonario. Cada día amanece en blanco; el botón de copiar el día anterior
  * evita tener que marcarlo todo otra vez cuando el menú se repite.
+ *
+ * Las meriendas no se marcan: son fijas, se ofrecen todos los días tal como
+ * estén en el catálogo.
  */
 export default function MenuDiario() {
   const fecha = hoy();
@@ -74,10 +81,10 @@ export default function MenuDiario() {
 
   const copiarAyer = async () => {
     const d = await getDoc(doc(db, "menus", idDiario(ayer()))).catch(() => null);
-    if (!d?.exists() || menuVacio(d.data()))
+    if (!d?.exists() || diarioVacio(d.data()))
       return alert("Ayer no quedó ningún menú guardado.");
-    const copia = { ...MENU_VACIO };
-    for (const k of CLAVES) copia[k] = d.data()[k] || [];
+    const copia = { ...sel };
+    for (const k of CLAVES_DIARIAS) copia[k] = d.data()[k] || [];
     await guardar(copia);
     setToast("Copiado el menú de ayer ✓");
     setTimeout(() => setToast(""), 1800);
@@ -85,13 +92,15 @@ export default function MenuDiario() {
 
   const limpiar = () => {
     if (!confirm("¿Quitar todo lo marcado para hoy?")) return;
-    guardar({ ...MENU_VACIO });
+    const vacio = { ...sel };
+    for (const k of CLAVES_DIARIAS) vacio[k] = [];
+    guardar(vacio);
   };
 
   if (cargando) return <p className="empty">Cargando…</p>;
 
   const catalogoVacio = menuVacio(fijo);
-  const totalActivos = CLAVES.reduce((n, k) => n + (sel[k]?.length || 0), 0);
+  const totalActivos = CLAVES_DIARIAS.reduce((n, k) => n + (sel[k]?.length || 0), 0);
 
   if (catalogoVacio)
     return (
@@ -136,7 +145,9 @@ export default function MenuDiario() {
             <div className="l">Marcados hoy</div>
           </div>
           <div className="kpi">
-            <div className="v">{CLAVES.reduce((n, k) => n + conNombre(fijo[k]).length, 0)}</div>
+            <div className="v">
+              {CLAVES_DIARIAS.reduce((n, k) => n + conNombre(fijo[k]).length, 0)}
+            </div>
             <div className="l">En el catálogo</div>
           </div>
         </div>
@@ -147,7 +158,7 @@ export default function MenuDiario() {
         </div>
       </div>
 
-      {SECCIONES.map((s) => {
+      {DIARIAS.map((s) => {
         const filas = conNombre(fijo[s.key]);
         if (!filas.length) return null;
         const activos = sel[s.key] || [];
@@ -176,6 +187,34 @@ export default function MenuDiario() {
                   {f.nombre}
                   {Number(f.precio) > 0 && <span className="p">{money(f.precio)}</span>}
                 </button>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+
+      {/* Las fijas no se marcan: se muestran para que se vea qué hay siempre. */}
+      {FIJAS.map((s) => {
+        const filas = conNombre(fijo[s.key]);
+        if (!filas.length) return null;
+
+        return (
+          <div className="card fija" key={s.key}>
+            <h2>
+              {s.icono} {s.titulo}
+              <span className="count fija">Siempre</span>
+            </h2>
+            <p className="muted" style={{ margin: "0 0 10px", fontSize: 13 }}>
+              No hay que marcarlas: van al talonario todos los días. Para quitar o
+              agregar, ve a <b>Menú fijo</b>.
+            </p>
+
+            <div className="chips">
+              {filas.map((f) => (
+                <span key={f.id} className="chip on quieto">
+                  {f.nombre}
+                  {Number(f.precio) > 0 && <span className="p">{money(f.precio)}</span>}
+                </span>
               ))}
             </div>
           </div>
