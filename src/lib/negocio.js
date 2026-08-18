@@ -52,9 +52,16 @@ export const money = (n) =>
 
 export const uid = () => Math.random().toString(36).slice(2, 9);
 
-/** Quita el "huevo/huevos" del nombre para no repetirlo: "HUEVOS: HUEVOS FRITOS". */
+/**
+ * Quita del nombre la palabra que el rótulo ya dice, para no repetirla:
+ * "HUEVOS: HUEVOS FRITOS" o "SOPA DE SOPA DE VERDURAS".
+ */
+const sinPrefijo = (n, re) => n.trim().replace(re, "").trim() || n.trim();
+
 const soloPreparacion = (n) =>
-  n.trim().replace(/^huevos?\s+(al\s+|a\s+la\s+|de\s+|con\s+)?/i, "").trim() || n.trim();
+  sinPrefijo(n, /^huevos?\s+(al\s+|a\s+la\s+|de\s+|con\s+)?/i);
+
+const soloSabor = (n) => sinPrefijo(n, /^(sopa|caldo|consom[eé])\s*(de\s+)?/i);
 
 /**
  * Construye la línea del talonario a partir de lo seleccionado del menú.
@@ -65,18 +72,33 @@ const soloPreparacion = (n) =>
  *
  * @returns {{tipo,descripcion,huevos,precioUnit,fijo}|null}
  */
-export function armarLinea({ caldo, proteinas = [], huevos = [], especial, precios }) {
+export function armarLinea({
+  caldo,
+  sopa,
+  proteinas = [],
+  huevos = [],
+  especial,
+  precios,
+}) {
   const p = { ...PRECIOS_DEF, ...precios };
+
+  // Caldo y sopa cumplen el mismo papel: el caldo es de desayuno y la sopa de
+  // almuerzo, pero se cobran igual. Son excluyentes entre sí.
+  const liquido = caldo || sopa || null;
+  const esSopa = !caldo && !!sopa;
+
   const nombresProt = proteinas.map((x) => x.nombre).filter(Boolean);
   const nombresHuevo = huevos.map((x) => x.nombre).filter(Boolean);
 
-  const hayCaldo = !!caldo;
+  const hayLiquido = !!liquido;
   const hayProt = nombresProt.length > 0;
   const hayHuevo = nombresHuevo.length > 0;
 
-  if (!hayCaldo && !hayProt && !hayHuevo) return null;
+  if (!hayLiquido && !hayProt && !hayHuevo) return null;
 
-  const txtCaldo = hayCaldo ? `CALDO DE ${caldo.nombre.toUpperCase()}` : "";
+  const txtLiquido = hayLiquido
+    ? `${esSopa ? "SOPA" : "CALDO"} DE ${soloSabor(liquido.nombre).toUpperCase()}`
+    : "";
   const txtProt = nombresProt.join(", ").toUpperCase();
   const txtHuevo = hayHuevo
     ? `HUEVOS: ${nombresHuevo.map(soloPreparacion).join(", ").toUpperCase()}`
@@ -85,30 +107,30 @@ export function armarLinea({ caldo, proteinas = [], huevos = [], especial, preci
   /** Todas las proteínas juntas, para decidir el precio. */
   const todas = [...proteinas, ...huevos];
 
-  // Caldo + algo -> UN solo almuerzo
-  if (hayCaldo && (hayProt || hayHuevo)) {
+  // Líquido + algo -> UN solo almuerzo
+  if (hayLiquido && (hayProt || hayHuevo)) {
     return {
       tipo: especial ? "almuerzo_especial" : "almuerzo_normal",
-      descripcion: [txtCaldo, txtProt, txtHuevo].filter(Boolean).join(" + "),
+      descripcion: [txtLiquido, txtProt, txtHuevo].filter(Boolean).join(" + "),
       huevos: txtHuevo,
       precioUnit: especial ? p.almuerzoEspecial : p.almuerzoNormal,
       fijo: especial ? p.almuerzoEspecialFijo : p.almuerzoNormalFijo,
     };
   }
 
-  // Solo caldo (si el caldo trae precio propio en el menú, ese manda)
-  if (hayCaldo) {
-    const propio = Number(caldo.precio) > 0 ? Number(caldo.precio) : null;
+  // Solo el líquido (si trae precio propio en el menú, ese manda)
+  if (hayLiquido) {
+    const propio = Number(liquido.precio) > 0 ? Number(liquido.precio) : null;
     return {
-      tipo: "solo_caldo",
-      descripcion: txtCaldo,
+      tipo: esSopa ? "solo_sopa" : "solo_caldo",
+      descripcion: txtLiquido,
       huevos: "",
       precioUnit: propio ?? p.soloCaldo,
       fijo: propio ? true : p.soloCaldoFijo,
     };
   }
 
-  // Sin caldo: el seco, los huevos, o ambos
+  // Sin líquido: el seco, los huevos, o ambos
   const propio =
     todas.length === 1 && Number(todas[0].precio) > 0 ? Number(todas[0].precio) : null;
 
@@ -126,6 +148,7 @@ export const ETIQUETA_TIPO = {
   almuerzo_normal: "Almuerzos normales",
   almuerzo_especial: "Almuerzos especiales",
   solo_caldo: "Solo caldo",
+  solo_sopa: "Solo sopa",
   solo_seco: "Solo seco",
   adicional: "Adicionales",
   especial: "Especiales",

@@ -5,7 +5,14 @@ import { db, hoy } from "../firebase";
 /** El menú es uno solo y queda fijo: no hay que rehacerlo cada día. */
 export const MENU_ID = "fijo";
 
-const VACIO = { caldos: [], proteinas: [], huevos: [], adicionales: [], especiales: [] };
+const VACIO = {
+  caldos: [],
+  sopas: [],
+  proteinas: [],
+  huevos: [],
+  adicionales: [],
+  especiales: [],
+};
 const uid = () => Math.random().toString(36).slice(2, 9);
 
 /**
@@ -17,6 +24,7 @@ const uid = () => Math.random().toString(36).slice(2, 9);
  */
 const SECCIONES = [
   { key: "caldos", titulo: "Caldos", icono: "🍲", ph: "Ej: Pescado", precioPh: "$ opcional" },
+  { key: "sopas", titulo: "Sopas", icono: "🥣", ph: "Ej: Verduras", precioPh: "$ opcional" },
   { key: "proteinas", titulo: "Proteínas", icono: "🍗", ph: "Ej: Pechuga", precioPh: "$ opcional" },
   { key: "huevos", titulo: "Huevos", icono: "🍳", ph: "Ej: Revueltos", precioPh: "$ opcional" },
   { key: "adicionales", titulo: "Adicional", icono: "➕", ph: "Ej: Porción de arroz", precioPh: "$" },
@@ -96,9 +104,10 @@ export default function MenuDia() {
           se guarda solo mientras escribes. Cámbialo cuando cambie tu carta.
         </p>
         <p className="muted" style={{ margin: "8px 0 0", fontSize: 13 }}>
-          Los <b>Huevos</b> cuentan como una proteína más: caldo + huevos se cobra como un
-          solo almuerzo, igual que con la pechuga. En <b>Caldos</b>, <b>Proteínas</b> y{" "}
-          <b>Huevos</b> el precio es opcional y solo manda cuando el plato va solo.
+          El <b>caldo</b> es del desayuno y la <b>sopa</b> del almuerzo: cumplen el mismo
+          papel y se cobran igual, pero no se piden juntos. Los <b>Huevos</b> cuentan como
+          una proteína más, así que caldo o sopa + huevos se cobra como un solo plato.
+          El precio de cada fila es opcional y solo manda cuando el plato va solo.
         </p>
       </div>
 

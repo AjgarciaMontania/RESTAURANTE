@@ -53,7 +53,7 @@ const MENSAJES = [
 const CAMPOS = [
   { key: "almuerzoNormal", label: "Almuerzo normal", ayuda: "Caldo + proteína en un solo cobro" },
   { key: "almuerzoEspecial", label: "Almuerzo especial", ayuda: "Cuando el pedido se marca como Especial" },
-  { key: "soloCaldo", label: "Solo caldo", ayuda: "Cuando piden únicamente el caldo" },
+  { key: "soloCaldo", label: "Solo caldo o sopa", ayuda: "Cuando piden el líquido sin proteína" },
   { key: "soloSeco", label: "Solo seco", ayuda: "Cuando piden únicamente la proteína" },
 ];
 

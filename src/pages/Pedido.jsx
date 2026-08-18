@@ -20,6 +20,7 @@ import { MENU_ID } from "./MenuDia.jsx";
 
 const MENU_VACIO = {
   caldos: [],
+  sopas: [],
   proteinas: [],
   huevos: [],
   adicionales: [],
@@ -38,6 +39,7 @@ export default function Pedido() {
 
   // Constructor de almuerzo
   const [caldoSel, setCaldoSel] = useState(null);
+  const [sopaSel, setSopaSel] = useState(null);
   const [protSel, setProtSel] = useState([]);
   const [huevoSel, setHuevoSel] = useState([]);
   const [especial, setEspecial] = useState(false);
@@ -62,6 +64,7 @@ export default function Pedido() {
   const conNombre = (arr) => (arr || []).filter((x) => x.nombre?.trim());
 
   const caldos = conNombre(menu.caldos);
+  const sopas = conNombre(menu.sopas);
   const proteinas = conNombre(menu.proteinas);
   const huevos = conNombre(menu.huevos);
   const adicionales = conNombre(menu.adicionales);
@@ -73,18 +76,29 @@ export default function Pedido() {
     () =>
       armarLinea({
         caldo: caldoSel,
+        sopa: sopaSel,
         proteinas: protSel,
         huevos: huevoSel,
         especial,
         precios,
       }),
-    [caldoSel, protSel, huevoSel, especial, precios]
+    [caldoSel, sopaSel, protSel, huevoSel, especial, precios]
   );
 
   const total = totalLineas(items);
 
   const alternar = (lista, set) => (x) =>
     set((s) => (s.find((y) => y.id === x.id) ? s.filter((y) => y.id !== x.id) : [...s, x]));
+
+  /** Caldo y sopa son excluyentes: elegir uno descarta el otro. */
+  const elegirCaldo = (c) => {
+    setCaldoSel(caldoSel?.id === c.id ? null : c);
+    setSopaSel(null);
+  };
+  const elegirSopa = (x) => {
+    setSopaSel(sopaSel?.id === x.id ? null : x);
+    setCaldoSel(null);
+  };
 
   const toggleProt = alternar(protSel, setProtSel);
   const toggleHuevo = alternar(huevoSel, setHuevoSel);
@@ -93,6 +107,7 @@ export default function Pedido() {
     if (!previa) return;
     setItems((s) => [...s, { id: uid(), cant, ...previa }]);
     setCaldoSel(null);
+    setSopaSel(null);
     setProtSel([]);
     setHuevoSel([]);
     setEspecial(false);
@@ -164,6 +179,7 @@ export default function Pedido() {
 
   const sinMenu =
     !caldos.length &&
+    !sopas.length &&
     !proteinas.length &&
     !huevos.length &&
     !adicionales.length &&
@@ -222,21 +238,42 @@ export default function Pedido() {
         </div>
       )}
 
-      {(caldos.length > 0 || proteinas.length > 0 || huevos.length > 0) && (
+      {(caldos.length > 0 || sopas.length > 0 || proteinas.length > 0 || huevos.length > 0) && (
         <div className="card">
           <h2>🍲 Armar almuerzo</h2>
 
           {caldos.length > 0 && (
             <>
-              <p className="muted" style={{ fontSize: 12, margin: "0 0 8px" }}>CALDOS</p>
+              <p className="muted" style={{ fontSize: 12, margin: "0 0 8px" }}>
+                🍲 CALDOS <span style={{ opacity: .7 }}>(desayuno)</span>
+              </p>
               <div className="chips" style={{ marginBottom: 14 }}>
                 {caldos.map((c) => (
                   <button
                     key={c.id}
                     className={"chip" + (caldoSel?.id === c.id ? " on" : "")}
-                    onClick={() => setCaldoSel(caldoSel?.id === c.id ? null : c)}
+                    onClick={() => elegirCaldo(c)}
                   >
                     {c.nombre}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+
+          {sopas.length > 0 && (
+            <>
+              <p className="muted" style={{ fontSize: 12, margin: "0 0 8px" }}>
+                🥣 SOPAS <span style={{ opacity: .7 }}>(almuerzo)</span>
+              </p>
+              <div className="chips" style={{ marginBottom: 14 }}>
+                {sopas.map((x) => (
+                  <button
+                    key={x.id}
+                    className={"chip" + (sopaSel?.id === x.id ? " on" : "")}
+                    onClick={() => elegirSopa(x)}
+                  >
+                    {x.nombre}
                   </button>
                 ))}
               </div>

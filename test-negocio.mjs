@@ -236,4 +236,51 @@ chk5('Sin huevos queda vacio',
   armarLinea({ caldo: pescado, proteinas: [arroz], especial: false, precios: P }).huevos, '');
 
 console.log(f5 ? `\n❌ ${f5} fallo(s) en huevos` : '\n✅ Huevos: todo pasa');
-process.exit(fallos + f2 + f3 + f4 + f5 ? 1 : 0);
+
+// ---------------------------------------------------------------
+// Sopas: el caldo es del desayuno y la sopa del almuerzo,
+// mismo papel y mismo precio, pero nunca juntas
+// ---------------------------------------------------------------
+console.log('\n--- Sopas ---');
+let f6 = 0;
+const chk6 = (nom, real, esp) => {
+  const ok = real === esp;
+  if (!ok) f6++;
+  console.log(`${ok ? '✓' : '✗'} ${nom}  ->  ${real}${ok ? '' : `  (esperado ${esp})`}`);
+};
+
+const verduras = { id: 's1', nombre: 'Verduras', precio: 0 };
+const sopaPasta = { id: 's2', nombre: 'Sopa de pasta', precio: 0 };
+const ajiaco = { id: 's3', nombre: 'Ajiaco', precio: 9000 };
+
+const s1 = armarLinea({ sopa: verduras, proteinas: [arroz, pechuga], especial: false, precios: P });
+chk6('Sopa + proteinas = un almuerzo', s1.precioUnit, 10000);
+chk6('  se rotula como sopa', s1.descripcion, 'SOPA DE VERDURAS + ARROZ, PECHUGA');
+
+// No repite la palabra si el nombre ya la trae
+const s2 = armarLinea({ sopa: sopaPasta, proteinas: [arroz], especial: false, precios: P });
+chk6('No repite "sopa de"', s2.descripcion, 'SOPA DE PASTA + ARROZ');
+
+// Solo sopa cuesta lo mismo que solo caldo
+const s3 = armarLinea({ sopa: verduras, especial: false, precios: P });
+chk6('Solo sopa = precio de solo caldo', s3.precioUnit, P.soloCaldo);
+chk6('  se distingue en el desglose', s3.tipo, 'solo_sopa');
+chk6('  el caldo sigue siendo solo_caldo',
+  armarLinea({ caldo: pescado, especial: false, precios: P }).tipo, 'solo_caldo');
+
+// Precio propio de la sopa manda cuando va sola
+chk6('Sopa con precio propio', armarLinea({ sopa: ajiaco, especial: false, precios: P }).precioUnit, 9000);
+chk6('  pero con proteina vuelve a almuerzo',
+  armarLinea({ sopa: ajiaco, proteinas: [arroz], especial: false, precios: P }).precioUnit, 10000);
+
+// Sopa + huevos también es un solo plato
+const s4 = armarLinea({ sopa: verduras, huevos: [revueltos], especial: false, precios: P });
+chk6('Sopa + huevos, un solo cobro', s4.precioUnit, 10000);
+chk6('  con los huevos rotulados', s4.descripcion, 'SOPA DE VERDURAS + HUEVOS: REVUELTOS');
+
+// Si por alguna razón llegan los dos, manda el caldo y no se duplica
+const s5 = armarLinea({ caldo: pescado, sopa: verduras, proteinas: [arroz], especial: false, precios: P });
+chk6('Caldo y sopa juntos: manda el caldo', s5.descripcion, 'CALDO DE PESCADO + ARROZ');
+
+console.log(f6 ? `\n❌ ${f6} fallo(s) en sopas` : '\n✅ Sopas: todo pasa');
+process.exit(fallos + f2 + f3 + f4 + f5 + f6 ? 1 : 0);
