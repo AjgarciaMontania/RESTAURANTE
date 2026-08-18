@@ -16,21 +16,18 @@ import {
   uid,
 } from "../lib/negocio";
 
-import { MENU_ID } from "./MenuDia.jsx";
-
-const MENU_VACIO = {
-  caldos: [],
-  sopas: [],
-  principios: [],
-  proteinas: [],
-  huevos: [],
-  adicionales: [],
-  especiales: [],
-};
+import {
+  MENU_ID,
+  MENU_VACIO,
+  conNombre,
+  idDiario,
+  menuDelDia,
+} from "../lib/menu";
 
 export default function Pedido() {
   const fecha = hoy();
-  const [menu, setMenu] = useState(MENU_VACIO);
+  const [fijo, setFijo] = useState(MENU_VACIO);
+  const [diario, setDiario] = useState(MENU_VACIO);
   const [precios, setPrecios] = useState(PRECIOS_DEF);
 
   const [mesa, setMesa] = useState("");
@@ -52,18 +49,24 @@ export default function Pedido() {
 
   useEffect(() => {
     const a = onSnapshot(doc(db, "menus", MENU_ID), (s) =>
-      setMenu(s.exists() ? { ...MENU_VACIO, ...s.data() } : MENU_VACIO)
+      setFijo(s.exists() ? { ...MENU_VACIO, ...s.data() } : MENU_VACIO)
     );
-    const b = onSnapshot(doc(db, "config", "precios"), (s) =>
+    const b = onSnapshot(doc(db, "menus", idDiario(fecha)), (s) =>
+      setDiario(s.exists() ? { ...MENU_VACIO, ...s.data() } : MENU_VACIO)
+    );
+    const c = onSnapshot(doc(db, "config", "precios"), (s) =>
       setPrecios(s.exists() ? { ...PRECIOS_DEF, ...s.data() } : PRECIOS_DEF)
     );
     return () => {
       a();
       b();
+      c();
     };
   }, [fecha]);
 
-  const conNombre = (arr) => (arr || []).filter((x) => x.nombre?.trim());
+  // Solo lo disponible hoy. Si nadie marcó nada, se muestra el catálogo
+  // completo con un aviso: mejor eso a dejar al mesero sin poder trabajar.
+  const { menu, sinSeleccion } = useMemo(() => menuDelDia(fijo, diario), [fijo, diario]);
 
   const caldos = conNombre(menu.caldos);
   const sopas = conNombre(menu.sopas);
@@ -196,16 +199,22 @@ export default function Pedido() {
       <div className="card">
         <h2>🧾 Talonario</h2>
         <p className="empty">
-          Todavía no has armado el menú.
+          Todavía no hay nada en el menú.
           <br />
-          Ve a la pestaña <b>Menú</b> y agrega los caldos y proteínas. Se escribe una
-          sola vez y queda fijo.
+          Ve a la pestaña <b>Menú</b> y escribe primero tu catálogo.
         </p>
       </div>
     );
 
   return (
     <>
+      {sinSeleccion && (
+        <div className="aviso">
+          ⚠️ Nadie ha marcado el <b>menú de hoy</b>, así que aquí sale el catálogo
+          completo. Ve a <b>Menú → Menú de hoy</b> y marca lo que hay.
+        </div>
+      )}
+
       {(precios.usarMesas || precios.usarCliente || precios.usarParaLlevar) && (
         <div className="card">
           <h2>📋 Datos del pedido</h2>

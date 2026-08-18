@@ -315,6 +315,13 @@ input.l-input {
 
 .acciones { display: flex; gap: 8px; flex-wrap: wrap; }
 
+/* Aviso de atención dentro de una pantalla */
+.aviso {
+  background: #fbf3e0; border: 1px solid #ecd9ac; border-left: 5px solid var(--oro);
+  border-radius: 10px; padding: 12px 14px; margin-bottom: 14px;
+  font-size: 13.5px; line-height: 1.5; color: #5c4413;
+}
+
 /* Panel de cobro dentro de un pedido pendiente */
 .cobro {
   background: var(--surface-2);

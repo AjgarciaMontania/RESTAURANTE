@@ -1,5 +1,5 @@
 import { HashRouter, Routes, Route, NavLink, useLocation } from "react-router-dom";
-import MenuDia from "./pages/MenuDia.jsx";
+import Menu from "./pages/Menu.jsx";
 import Pedido from "./pages/Pedido.jsx";
 import Cocina from "./pages/Cocina.jsx";
 import Fiados from "./pages/Fiados.jsx";
@@ -55,7 +55,7 @@ function Shell() {
 
       <main className="content">
         <Routes>
-          <Route path="/" element={<MenuDia />} />
+          <Route path="/" element={<Menu />} />
           <Route path="/pedido" element={<Pedido />} />
           <Route
             path="/fiados"

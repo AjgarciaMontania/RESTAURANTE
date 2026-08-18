@@ -337,4 +337,56 @@ chk7('  pero acompanado vuelve a almuerzo',
 chk7('Sin nada devuelve null', armarLinea({ especial: false, precios: P }), null);
 
 console.log(f7 ? `\n❌ ${f7} fallo(s) en principios` : '\n✅ Principios: todo pasa');
-process.exit(fallos + f2 + f3 + f4 + f5 + f6 + f7 ? 1 : 0);
+
+
+// ---------------------------------------------------------------
+// Menú de hoy: filtra el catálogo, y nunca deja al mesero sin nada
+// ---------------------------------------------------------------
+import { menuDelDia, menuVacio } from './src/lib/menu.js';
+
+console.log('\n--- Menu de hoy ---');
+let f8 = 0;
+const chk8 = (nom, real, esp) => {
+  const ok = real === esp;
+  if (!ok) f8++;
+  console.log(`${ok ? '✓' : '✗'} ${nom}  ->  ${real}${ok ? '' : `  (esperado ${esp})`}`);
+};
+
+const catalogo = {
+  caldos: [{ id: 'c1', nombre: 'Pescado' }, { id: 'c2', nombre: 'Hueso' }],
+  sopas: [{ id: 's1', nombre: 'Verduras' }, { id: 's2', nombre: 'Pasta' }],
+  principios: [{ id: 'p1', nombre: 'Frijoles' }],
+  proteinas: [{ id: 't1', nombre: 'Arroz' }, { id: 't2', nombre: 'Carne' }, { id: 't3', nombre: 'Pechuga' }],
+  huevos: [{ id: 'h1', nombre: 'Revueltos' }],
+  adicionales: [{ id: 'a1', nombre: 'Jugo' }],
+  especiales: [],
+};
+
+// Un día normal: se marcó parte del catálogo
+const marcado = { caldos: [], sopas: ['s1'], principios: ['p1'], proteinas: ['t2', 't3'], huevos: [], adicionales: ['a1'], especiales: [] };
+const r1 = menuDelDia(catalogo, marcado);
+chk8('Filtra las sopas', r1.menu.sopas.map(x => x.nombre).join(','), 'Verduras');
+chk8('Filtra las proteinas', r1.menu.proteinas.map(x => x.nombre).join(','), 'Carne,Pechuga');
+chk8('Lo no marcado queda fuera', r1.menu.caldos.length, 0);
+chk8('Los huevos tampoco', r1.menu.huevos.length, 0);
+chk8('No avisa, porque si hay seleccion', r1.sinSeleccion, false);
+
+// Nadie marcó nada: se muestra todo, con aviso
+const r2 = menuDelDia(catalogo, { caldos: [], sopas: [], principios: [], proteinas: [], huevos: [], adicionales: [], especiales: [] });
+chk8('Sin marcar muestra el catalogo', r2.menu.proteinas.length, 3);
+chk8('  y avisa', r2.sinSeleccion, true);
+
+// Documento del día inexistente
+const r3 = menuDelDia(catalogo, undefined);
+chk8('Sin documento del dia muestra todo', r3.menu.caldos.length, 2);
+chk8('  y avisa', r3.sinSeleccion, true);
+
+// Un id que ya no existe en el catálogo simplemente se ignora
+const r4 = menuDelDia(catalogo, { ...marcado, proteinas: ['t2', 'borrado'] });
+chk8('Ignora lo que ya no esta en el catalogo', r4.menu.proteinas.map(x => x.nombre).join(','), 'Carne');
+
+chk8('menuVacio detecta vacio', menuVacio({ caldos: [], sopas: [] }), true);
+chk8('menuVacio detecta con datos', menuVacio({ caldos: ['x'] }), false);
+
+console.log(f8 ? `\n❌ ${f8} fallo(s) en menu de hoy` : '\n✅ Menu de hoy: todo pasa');
+process.exit(fallos + f2 + f3 + f4 + f5 + f6 + f7 + f8 ? 1 : 0);
