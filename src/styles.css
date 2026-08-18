@@ -463,6 +463,23 @@ textarea {
 }
 .ticket-items .desc { padding-top: .1em; font-weight: 600; overflow-wrap: anywhere; }
 
+/* Renglones que no son el almuerzo: adicional, especial o huevo */
+.ticket-items li.extra { align-items: center; }
+.ticket-items li.extra .cant { background: #6b5a3f; }
+.ticket-items li.extra .desc { font-weight: 700; }
+.ticket-items .marca {
+  display: inline-block; margin-left: .5em; vertical-align: middle;
+  font-style: normal; font-size: .5em; font-weight: 800;
+  letter-spacing: .09em; text-transform: uppercase;
+  padding: .35em .7em; border-radius: 2em; white-space: nowrap;
+}
+.ticket-items li.adicional .cant { background: #b8721f; }
+.ticket-items li.adicional .marca { background: #f6dfae; color: #7a5510; }
+.ticket-items li.especial .cant { background: #8a5cbf; }
+.ticket-items li.especial .marca { background: #e8ddf6; color: #5b3a86; }
+.ticket-items li.huevo .cant { background: #c2472f; }
+.ticket-items li.huevo .marca { background: #fadcd5; color: #93331f; }
+
 .ticket-pie {
   display: flex; align-items: center; gap: .8em;
   margin-top: auto; padding: .8em 1.1em 1em;

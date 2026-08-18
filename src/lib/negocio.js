@@ -108,6 +108,7 @@ export const ETIQUETA_TIPO = {
   solo_seco: "Solo seco",
   adicional: "Adicionales",
   especial: "Especiales",
+  huevo: "Huevos",
 };
 
 /** ¿La línea cuenta como almuerzo vendido? */

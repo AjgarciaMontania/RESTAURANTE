@@ -11,11 +11,12 @@ y verlos al instante en un TV de cocina.
 
 | Ruta | Para qué sirve |
 |---|---|
-| `#/` | **Menú del día** — Caldos, Proteínas, Adicional y Especiales en filas que se digitan a mano |
-| `#/pedido` | **Talonario** — arma el pedido desde el menú del día y lo envía a cocina |
+| `#/` | **Menú de la casa** — fijo, se escribe una vez: Caldos, Proteínas, Huevos, Adicional y Especiales |
+| `#/pedido` | **Talonario** — arma la comanda desde el menú y la envía a cocina |
 | `#/cocina` | **TV de cocina** — pantalla completa, pedidos entrantes en tiempo real |
-| `#/caja` | **Cierre de caja** — total del día, almuerzos vendidos, historial y CSV |
-| `#/ajustes` | **Precios base** y la dirección para el TV |
+| `#/fiados` | **Fiados** — clientes, saldos, abonos y avisos por WhatsApp |
+| `#/caja` | **Caja** — cobro de los pedidos servidos y cierre del día |
+| `#/ajustes` | **Precios base**, opciones, plantillas de WhatsApp y PIN |
 
 ## Reglas de cobro
 

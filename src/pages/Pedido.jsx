@@ -16,7 +16,15 @@ import {
   uid,
 } from "../lib/negocio";
 
-const MENU_VACIO = { caldos: [], proteinas: [], adicionales: [], especiales: [] };
+import { MENU_ID } from "./MenuDia.jsx";
+
+const MENU_VACIO = {
+  caldos: [],
+  proteinas: [],
+  huevos: [],
+  adicionales: [],
+  especiales: [],
+};
 
 export default function Pedido() {
   const fecha = hoy();
@@ -38,7 +46,7 @@ export default function Pedido() {
   const [toast, setToast] = useState("");
 
   useEffect(() => {
-    const a = onSnapshot(doc(db, "menus", fecha), (s) =>
+    const a = onSnapshot(doc(db, "menus", MENU_ID), (s) =>
       setMenu(s.exists() ? { ...MENU_VACIO, ...s.data() } : MENU_VACIO)
     );
     const b = onSnapshot(doc(db, "config", "precios"), (s) =>
@@ -54,6 +62,7 @@ export default function Pedido() {
 
   const caldos = conNombre(menu.caldos);
   const proteinas = conNombre(menu.proteinas);
+  const huevos = conNombre(menu.huevos);
   const adicionales = conNombre(menu.adicionales);
   const especiales = conNombre(menu.especiales);
 
@@ -141,16 +150,22 @@ export default function Pedido() {
     }
   };
 
-  const sinMenu = !caldos.length && !proteinas.length && !adicionales.length && !especiales.length;
+  const sinMenu =
+    !caldos.length &&
+    !proteinas.length &&
+    !huevos.length &&
+    !adicionales.length &&
+    !especiales.length;
 
   if (sinMenu)
     return (
       <div className="card">
         <h2>🧾 Talonario</h2>
         <p className="empty">
-          Todavía no has armado el menú de hoy.
+          Todavía no has armado el menú.
           <br />
-          Ve a la pestaña <b>Menú</b> y agrega los caldos y proteínas.
+          Ve a la pestaña <b>Menú</b> y agrega los caldos y proteínas. Se escribe una
+          sola vez y queda fijo.
         </p>
       </div>
     );
@@ -260,6 +275,20 @@ export default function Pedido() {
               {previa.descripcion}
             </p>
           )}
+        </div>
+      )}
+
+      {huevos.length > 0 && (
+        <div className="card">
+          <h2>🍳 Huevos</h2>
+          <div className="chips">
+            {huevos.map((h) => (
+              <button key={h.id} className="chip" onClick={() => agregarSuelto(h, "huevo")}>
+                {h.nombre}
+                {Number(h.precio) > 0 && <span className="p">{money(h.precio)}</span>}
+              </button>
+            ))}
+          </div>
         </div>
       )}
 

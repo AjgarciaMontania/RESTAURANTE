@@ -7,6 +7,13 @@ import { useVersionCorta } from "../lib/version.js";
 const AVISO = 10;
 const URGENTE = 18;
 
+/** Renglones que no son el almuerzo: en la cocina tienen que saltar a la vista. */
+const EXTRAS = {
+  adicional: { texto: "Adicional", clase: "adicional" },
+  especial: { texto: "Especial", clase: "especial" },
+  huevo: { texto: "Huevo", clase: "huevo" },
+};
+
 const CLAVE_ZOOM = "restaurante.tvZoom";
 const BASE = 16;
 const MIN_ESCALA = 0.42;
@@ -184,12 +191,18 @@ export default function Cocina() {
                 )}
 
                 <ul className="ticket-items">
-                  {(p.items || []).map((i, k) => (
-                    <li key={k}>
-                      <span className="cant">{i.cant}</span>
-                      <span className="desc">{i.descripcion}</span>
-                    </li>
-                  ))}
+                  {(p.items || []).map((i, k) => {
+                    const extra = EXTRAS[i.tipo];
+                    return (
+                      <li key={k} className={extra ? "extra " + extra.clase : ""}>
+                        <span className="cant">{i.cant}</span>
+                        <span className="desc">
+                          {i.descripcion}
+                          {extra && <em className="marca">{extra.texto}</em>}
+                        </span>
+                      </li>
+                    );
+                  })}
                 </ul>
 
                 <footer className="ticket-pie">

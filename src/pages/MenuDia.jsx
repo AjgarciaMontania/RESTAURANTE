@@ -1,36 +1,55 @@
 import { useEffect, useState } from "react";
-import { doc, onSnapshot, setDoc } from "firebase/firestore";
-import { db, hoy, ZONA } from "../firebase";
+import { doc, getDoc, onSnapshot, setDoc } from "firebase/firestore";
+import { db, hoy } from "../firebase";
 
-const VACIO = { caldos: [], proteinas: [], adicionales: [], especiales: [] };
+/** El menú es uno solo y queda fijo: no hay que rehacerlo cada día. */
+export const MENU_ID = "fijo";
+
+const VACIO = { caldos: [], proteinas: [], huevos: [], adicionales: [], especiales: [] };
 const uid = () => Math.random().toString(36).slice(2, 9);
 
 /**
  * Secciones del menú.
- *  - precioPh: texto de la casilla de precio.
- *  - opcional: el precio se puede dejar en blanco y entonces manda el precio
- *    base de Ajustes. Si lo digitas, ese valor pisa al base para esa fila.
+ *
+ * En todas se puede escribir un precio. Donde es `opcional`, dejarlo vacío
+ * hace que mande el precio base de Ajustes; en Huevos, además, un precio en
+ * blanco significa que va incluido y solo es una indicación para la cocina.
  */
 const SECCIONES = [
-  { key: "caldos", titulo: "Caldos", icono: "🍲", ph: "Ej: Pescado", precioPh: "$ opcional", opcional: true },
-  { key: "proteinas", titulo: "Proteínas", icono: "🍗", ph: "Ej: Pechuga", precioPh: "$ opcional", opcional: true },
-  { key: "adicionales", titulo: "Adicional", icono: "➕", ph: "Ej: Porción de arroz", precioPh: "$", opcional: false },
-  { key: "especiales", titulo: "Especiales", icono: "⭐", ph: "Ej: Bandeja paisa", precioPh: "$", opcional: false },
+  { key: "caldos", titulo: "Caldos", icono: "🍲", ph: "Ej: Pescado", precioPh: "$ opcional" },
+  { key: "proteinas", titulo: "Proteínas", icono: "🍗", ph: "Ej: Pechuga", precioPh: "$ opcional" },
+  { key: "huevos", titulo: "Huevos", icono: "🍳", ph: "Ej: Revueltos", precioPh: "$ opcional" },
+  { key: "adicionales", titulo: "Adicional", icono: "➕", ph: "Ej: Porción de arroz", precioPh: "$" },
+  { key: "especiales", titulo: "Especiales", icono: "⭐", ph: "Ej: Bandeja paisa", precioPh: "$" },
 ];
 
+const vacio = (m) => Object.values(m).every((v) => !Array.isArray(v) || v.length === 0);
+
 export default function MenuDia() {
-  const fecha = hoy();
   const [menu, setMenu] = useState(VACIO);
   const [cargando, setCargando] = useState(true);
   const [toast, setToast] = useState("");
 
   useEffect(() => {
-    // Si la conexión está lenta no dejamos la pantalla colgada en "Cargando…"
     const t = setTimeout(() => setCargando(false), 5000);
     const off = onSnapshot(
-      doc(db, "menus", fecha),
-      (snap) => {
-        setMenu(snap.exists() ? { ...VACIO, ...snap.data() } : VACIO);
+      doc(db, "menus", MENU_ID),
+      async (snap) => {
+        if (snap.exists() && !vacio(snap.data())) {
+          setMenu({ ...VACIO, ...snap.data() });
+        } else {
+          // Primera vez con el menú fijo: se hereda el del día para no
+          // tener que volver a escribirlo todo.
+          const delDia = await getDoc(doc(db, "menus", hoy())).catch(() => null);
+          if (delDia?.exists() && !vacio(delDia.data())) {
+            const heredado = { ...VACIO, ...delDia.data() };
+            delete heredado.fecha;
+            setMenu(heredado);
+            await setDoc(doc(db, "menus", MENU_ID), heredado, { merge: true });
+          } else {
+            setMenu(VACIO);
+          }
+        }
         setCargando(false);
       },
       (err) => {
@@ -42,12 +61,12 @@ export default function MenuDia() {
       clearTimeout(t);
       off();
     };
-  }, [fecha]);
+  }, []);
 
   const guardar = async (siguiente) => {
     setMenu(siguiente);
     try {
-      await setDoc(doc(db, "menus", fecha), { ...siguiente, fecha }, { merge: true });
+      await setDoc(doc(db, "menus", MENU_ID), siguiente, { merge: true });
     } catch (e) {
       console.error(e);
       alert("No se pudo guardar. Revisa la conexión.");
@@ -66,30 +85,20 @@ export default function MenuDia() {
   const borrar = (key, id) =>
     guardar({ ...menu, [key]: menu[key].filter((f) => f.id !== id) });
 
-  const mostrarToast = (t) => {
-    setToast(t);
-    setTimeout(() => setToast(""), 1800);
-  };
-
   if (cargando) return <p className="empty">Cargando menú…</p>;
-
-  const f = new Date(fecha + "T12:00:00Z").toLocaleDateString("es-CO", {
-    timeZone: ZONA,
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-  });
-  const fechaLarga = f.charAt(0).toUpperCase() + f.slice(1);
 
   return (
     <>
       <div className="card">
-        <h2>📅 Menú del día</h2>
-        <div style={{ fontSize: 19, fontWeight: 700 }}>{fechaLarga}</div>
-        <p className="muted" style={{ margin: "6px 0 0", fontSize: 13 }}>
-          Todo lo que escribas aquí se guarda solo y aparece de una vez en el talonario.
-          En <b>Caldos</b> y <b>Proteínas</b> el precio es opcional: déjalo vacío para usar
-          el precio base de Ajustes, o digítalo para fijarlo solo en esa fila.
+        <h2>📖 Menú de la casa</h2>
+        <p className="muted" style={{ margin: 0, fontSize: 13 }}>
+          Este menú queda fijo: se escribe una vez y ahí se queda, día tras día. Todo
+          se guarda solo mientras escribes. Cámbialo cuando cambie tu carta.
+        </p>
+        <p className="muted" style={{ margin: "8px 0 0", fontSize: 13 }}>
+          En <b>Caldos</b>, <b>Proteínas</b> y <b>Huevos</b> el precio es opcional: vacío
+          usa el precio base de Ajustes, o en el caso de los huevos entra sin costo, solo
+          como indicación para la cocina.
         </p>
       </div>
 
@@ -101,9 +110,7 @@ export default function MenuDia() {
               <span className="count">{menu[s.key].length}</span>
             </h2>
 
-            {menu[s.key].length === 0 && (
-              <p className="empty">Sin filas todavía</p>
-            )}
+            {menu[s.key].length === 0 && <p className="empty">Sin filas todavía</p>}
 
             {menu[s.key].map((fila) => (
               <div className="row" key={fila.id}>
@@ -142,7 +149,10 @@ export default function MenuDia() {
 
       <button
         className="btn primary block"
-        onClick={() => mostrarToast("Menú guardado ✓")}
+        onClick={() => {
+          setToast("Menú guardado ✓");
+          setTimeout(() => setToast(""), 1800);
+        }}
         style={{ marginBottom: 20 }}
       >
         Listo
