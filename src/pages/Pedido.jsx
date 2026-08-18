@@ -67,15 +67,18 @@ export default function Pedido() {
   const adicionales = conNombre(menu.adicionales);
   const especiales = conNombre(menu.especiales);
 
-  // El huevo cuenta como una proteína más: caldo + huevos = un solo almuerzo
-  const proteinasElegidas = useMemo(
-    () => [...protSel, ...huevoSel],
-    [protSel, huevoSel]
-  );
-
+  // El huevo cuenta como una proteína más para el precio, pero en la
+  // descripción va aparte y rotulado, para que en la cocina no se confunda.
   const previa = useMemo(
-    () => armarLinea({ caldo: caldoSel, proteinas: proteinasElegidas, especial, precios }),
-    [caldoSel, proteinasElegidas, especial, precios]
+    () =>
+      armarLinea({
+        caldo: caldoSel,
+        proteinas: protSel,
+        huevos: huevoSel,
+        especial,
+        precios,
+      }),
+    [caldoSel, protSel, huevoSel, especial, precios]
   );
 
   const total = totalLineas(items);

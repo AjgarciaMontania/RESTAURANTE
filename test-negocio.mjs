@@ -194,32 +194,46 @@ const chk5 = (nom, real, esp) => {
 };
 
 const revueltos = { id: 'h1', nombre: 'Huevos revueltos', precio: 0 };
+const pechuga2 = { id: 'd', nombre: 'Pechuga', precio: 0 };
 const rancheros = { id: 'h2', nombre: 'Huevos rancheros', precio: 7000 };
 
 // Caldo + huevos = un solo almuerzo, igual que con la pechuga
-const h1 = armarLinea({ caldo: pescado, proteinas: [revueltos], especial: false, precios: P });
+const h1 = armarLinea({ caldo: pescado, huevos: [revueltos], especial: false, precios: P });
 chk5('Caldo + huevos = un almuerzo', h1.precioUnit, 10000);
-chk5('  descripcion', h1.descripcion, 'CALDO DE PESCADO + HUEVOS REVUELTOS');
+chk5('  se rotulan aparte', h1.descripcion, 'CALDO DE PESCADO + HUEVOS: REVUELTOS');
+chk5('  no repite la palabra huevos', /HUEVOS:\s*HUEVOS/.test(h1.descripcion), false);
 
 // Mezclando proteína y huevo sigue siendo un solo almuerzo
-const h2 = armarLinea({ caldo: pescado, proteinas: [arroz, revueltos], especial: false, precios: P });
-chk5('Caldo + arroz + huevos, un solo cobro', h2.precioUnit, 10000);
+const h2 = armarLinea({ caldo: pescado, proteinas: [arroz, pechuga], huevos: [rancheros], especial: false, precios: P });
+chk5('Caldo + proteinas + huevos, un solo cobro', h2.precioUnit, 10000);
+chk5('  cada parte en su lugar', h2.descripcion,
+  'CALDO DE PESCADO + ARROZ, PECHUGA + HUEVOS: RANCHEROS');
 
 // Solo huevos = seco
-const h3 = armarLinea({ caldo: null, proteinas: [revueltos], especial: false, precios: P });
+const h3 = armarLinea({ caldo: null, huevos: [revueltos], especial: false, precios: P });
 chk5('Solo huevos se cobra como seco', h3.precioUnit, 8000);
+chk5('  descripcion sin proteina', h3.descripcion, 'HUEVOS: REVUELTOS');
+
+// Seco y huevos juntos, sin caldo
+const h3b = armarLinea({ caldo: null, proteinas: [arroz], huevos: [revueltos], especial: false, precios: P });
+chk5('Seco + huevos', h3b.descripcion, 'SECO: ARROZ + HUEVOS: REVUELTOS');
 
 // Un huevo con precio propio manda cuando va solo
-const h4 = armarLinea({ caldo: null, proteinas: [rancheros], especial: false, precios: P });
+const h4 = armarLinea({ caldo: null, huevos: [rancheros], especial: false, precios: P });
 chk5('Huevo con precio propio, solo', h4.precioUnit, 7000);
 
 // Pero acompañado del caldo sigue siendo el precio del almuerzo
-const h5 = armarLinea({ caldo: pescado, proteinas: [rancheros], especial: false, precios: P });
+const h5 = armarLinea({ caldo: pescado, huevos: [rancheros], especial: false, precios: P });
 chk5('Huevo con precio propio + caldo = almuerzo', h5.precioUnit, 10000);
 
 // Especial también aplica
-const h6 = armarLinea({ caldo: pescado, proteinas: [revueltos], especial: true, precios: P });
+const h6 = armarLinea({ caldo: pescado, huevos: [revueltos], especial: true, precios: P });
 chk5('Caldo + huevos marcado especial', h6.precioUnit, 13000);
+
+// El rótulo se conserva para que la cocina lo muestre aparte
+chk5('La linea trae los huevos por separado', h2.huevos, 'HUEVOS: RANCHEROS');
+chk5('Sin huevos queda vacio',
+  armarLinea({ caldo: pescado, proteinas: [arroz], especial: false, precios: P }).huevos, '');
 
 console.log(f5 ? `\n❌ ${f5} fallo(s) en huevos` : '\n✅ Huevos: todo pasa');
 process.exit(fallos + f2 + f3 + f4 + f5 ? 1 : 0);

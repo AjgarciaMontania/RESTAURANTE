@@ -52,25 +52,45 @@ export const money = (n) =>
 
 export const uid = () => Math.random().toString(36).slice(2, 9);
 
+/** Quita el "huevo/huevos" del nombre para no repetirlo: "HUEVOS: HUEVOS FRITOS". */
+const soloPreparacion = (n) =>
+  n.trim().replace(/^huevos?\s+(al\s+|a\s+la\s+|de\s+|con\s+)?/i, "").trim() || n.trim();
+
 /**
  * Construye la línea del talonario a partir de lo seleccionado del menú.
- * @returns {{tipo,descripcion,precioUnit,fijo}|null}
+ *
+ * Los huevos se cobran como una proteína más, pero en la descripción van
+ * aparte y con su rótulo: en la cocina, leer "RANCHEROS" suelto se presta
+ * para confusiones.
+ *
+ * @returns {{tipo,descripcion,huevos,precioUnit,fijo}|null}
  */
-export function armarLinea({ caldo, proteinas, especial, precios }) {
+export function armarLinea({ caldo, proteinas = [], huevos = [], especial, precios }) {
   const p = { ...PRECIOS_DEF, ...precios };
   const nombresProt = proteinas.map((x) => x.nombre).filter(Boolean);
+  const nombresHuevo = huevos.map((x) => x.nombre).filter(Boolean);
+
   const hayCaldo = !!caldo;
   const hayProt = nombresProt.length > 0;
+  const hayHuevo = nombresHuevo.length > 0;
 
-  if (!hayCaldo && !hayProt) return null;
+  if (!hayCaldo && !hayProt && !hayHuevo) return null;
 
-  // Combinado -> un solo almuerzo
-  if (hayCaldo && hayProt) {
+  const txtCaldo = hayCaldo ? `CALDO DE ${caldo.nombre.toUpperCase()}` : "";
+  const txtProt = nombresProt.join(", ").toUpperCase();
+  const txtHuevo = hayHuevo
+    ? `HUEVOS: ${nombresHuevo.map(soloPreparacion).join(", ").toUpperCase()}`
+    : "";
+
+  /** Todas las proteínas juntas, para decidir el precio. */
+  const todas = [...proteinas, ...huevos];
+
+  // Caldo + algo -> UN solo almuerzo
+  if (hayCaldo && (hayProt || hayHuevo)) {
     return {
       tipo: especial ? "almuerzo_especial" : "almuerzo_normal",
-      descripcion: `CALDO DE ${caldo.nombre.toUpperCase()} + ${nombresProt
-        .join(", ")
-        .toUpperCase()}`,
+      descripcion: [txtCaldo, txtProt, txtHuevo].filter(Boolean).join(" + "),
+      huevos: txtHuevo,
       precioUnit: especial ? p.almuerzoEspecial : p.almuerzoNormal,
       fijo: especial ? p.almuerzoEspecialFijo : p.almuerzoNormalFijo,
     };
@@ -81,20 +101,21 @@ export function armarLinea({ caldo, proteinas, especial, precios }) {
     const propio = Number(caldo.precio) > 0 ? Number(caldo.precio) : null;
     return {
       tipo: "solo_caldo",
-      descripcion: `CALDO DE ${caldo.nombre.toUpperCase()}`,
+      descripcion: txtCaldo,
+      huevos: "",
       precioUnit: propio ?? p.soloCaldo,
       fijo: propio ? true : p.soloCaldoFijo,
     };
   }
 
-  // Solo seco
+  // Sin caldo: el seco, los huevos, o ambos
   const propio =
-    proteinas.length === 1 && Number(proteinas[0].precio) > 0
-      ? Number(proteinas[0].precio)
-      : null;
+    todas.length === 1 && Number(todas[0].precio) > 0 ? Number(todas[0].precio) : null;
+
   return {
     tipo: "solo_seco",
-    descripcion: `SECO: ${nombresProt.join(", ").toUpperCase()}`,
+    descripcion: [hayProt ? `SECO: ${txtProt}` : "", txtHuevo].filter(Boolean).join(" + "),
+    huevos: txtHuevo,
     precioUnit: propio ?? p.soloSeco,
     fijo: propio ? true : p.soloSecoFijo,
   };

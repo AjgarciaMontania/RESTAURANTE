@@ -193,12 +193,19 @@ export default function Cocina() {
                 <ul className="ticket-items">
                   {(p.items || []).map((i, k) => {
                     const extra = EXTRAS[i.tipo];
+                    // Los huevos se separan del resto del plato
+                    const conHuevos = i.huevos && i.descripcion.includes(i.huevos);
+                    const plato = conHuevos
+                      ? i.descripcion.replace(" + " + i.huevos, "").replace(i.huevos, "")
+                      : i.descripcion;
+
                     return (
                       <li key={k} className={extra ? "extra " + extra.clase : ""}>
                         <span className="cant">{i.cant}</span>
                         <span className="desc">
-                          {i.descripcion}
+                          {plato || i.descripcion}
                           {extra && <em className="marca">{extra.texto}</em>}
+                          {conHuevos && <span className="huevos">🍳 {i.huevos}</span>}
                         </span>
                       </li>
                     );
