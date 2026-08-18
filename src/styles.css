@@ -463,14 +463,15 @@ textarea {
 }
 .ticket-items .desc { padding-top: .1em; font-weight: 600; overflow-wrap: anywhere; }
 
-/* Los huevos, dentro del renglón del almuerzo, con su propio rótulo */
-.ticket-items .huevos {
+/* Principio y huevos, dentro del renglón del plato, con su propio rótulo */
+.ticket-items .rotulo {
   display: block; margin-top: .25em;
   font-size: .82em; font-weight: 800; letter-spacing: .02em;
-  color: #93331f;
-  background: #fadcd5; border-radius: .4em;
-  padding: .18em .55em; width: fit-content; max-width: 100%;
+  border-radius: .4em; padding: .18em .55em;
+  width: fit-content; max-width: 100%;
 }
+.ticket-items .rotulo.huevos { color: #93331f; background: #fadcd5; }
+.ticket-items .rotulo.principio { color: #5c4413; background: #f3e6c4; }
 
 /* Renglones que no son el almuerzo: adicional, especial o huevo */
 .ticket-items li.extra { align-items: center; }

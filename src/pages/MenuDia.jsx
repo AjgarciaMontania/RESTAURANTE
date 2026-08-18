@@ -8,6 +8,7 @@ export const MENU_ID = "fijo";
 const VACIO = {
   caldos: [],
   sopas: [],
+  principios: [],
   proteinas: [],
   huevos: [],
   adicionales: [],
@@ -25,6 +26,7 @@ const uid = () => Math.random().toString(36).slice(2, 9);
 const SECCIONES = [
   { key: "caldos", titulo: "Caldos", icono: "🍲", ph: "Ej: Pescado", precioPh: "$ opcional" },
   { key: "sopas", titulo: "Sopas", icono: "🥣", ph: "Ej: Verduras", precioPh: "$ opcional" },
+  { key: "principios", titulo: "Principios", icono: "🫘", ph: "Ej: Frijoles", precioPh: "$ opcional" },
   { key: "proteinas", titulo: "Proteínas", icono: "🍗", ph: "Ej: Pechuga", precioPh: "$ opcional" },
   { key: "huevos", titulo: "Huevos", icono: "🍳", ph: "Ej: Revueltos", precioPh: "$ opcional" },
   { key: "adicionales", titulo: "Adicional", icono: "➕", ph: "Ej: Porción de arroz", precioPh: "$" },
@@ -106,7 +108,8 @@ export default function MenuDia() {
         <p className="muted" style={{ margin: "8px 0 0", fontSize: 13 }}>
           El <b>caldo</b> es del desayuno y la <b>sopa</b> del almuerzo: cumplen el mismo
           papel y se cobran igual, pero no se piden juntos. Los <b>Huevos</b> cuentan como
-          una proteína más, así que caldo o sopa + huevos se cobra como un solo plato.
+          una proteína más, y el <b>principio</b> (frijoles, alverjas, macarrones) va
+          incluido en el plato sin sumar nada.
           El precio de cada fila es opcional y solo manda cuando el plato va solo.
         </p>
       </div>

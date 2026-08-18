@@ -63,6 +63,8 @@ const soloPreparacion = (n) =>
 
 const soloSabor = (n) => sinPrefijo(n, /^(sopa|caldo|consom[eé])\s*(de\s+)?/i);
 
+const soloPrincipio = (n) => sinPrefijo(n, /^principio\s*(de\s+)?/i);
+
 /**
  * Construye la línea del talonario a partir de lo seleccionado del menú.
  *
@@ -75,6 +77,7 @@ const soloSabor = (n) => sinPrefijo(n, /^(sopa|caldo|consom[eé])\s*(de\s+)?/i);
 export function armarLinea({
   caldo,
   sopa,
+  principio,
   proteinas = [],
   huevos = [],
   especial,
@@ -93,25 +96,31 @@ export function armarLinea({
   const hayLiquido = !!liquido;
   const hayProt = nombresProt.length > 0;
   const hayHuevo = nombresHuevo.length > 0;
+  const hayPrincipio = !!principio?.nombre;
 
-  if (!hayLiquido && !hayProt && !hayHuevo) return null;
+  if (!hayLiquido && !hayProt && !hayHuevo && !hayPrincipio) return null;
 
   const txtLiquido = hayLiquido
     ? `${esSopa ? "SOPA" : "CALDO"} DE ${soloSabor(liquido.nombre).toUpperCase()}`
     : "";
   const txtProt = nombresProt.join(", ").toUpperCase();
+  const txtPrincipio = hayPrincipio
+    ? `PRINCIPIO: ${soloPrincipio(principio.nombre).toUpperCase()}`
+    : "";
   const txtHuevo = hayHuevo
     ? `HUEVOS: ${nombresHuevo.map(soloPreparacion).join(", ").toUpperCase()}`
     : "";
 
-  /** Todas las proteínas juntas, para decidir el precio. */
-  const todas = [...proteinas, ...huevos];
+  /** El principio y los huevos hacen parte del plato, no se cobran aparte. */
+  const acompanan = [...proteinas, ...huevos, ...(hayPrincipio ? [principio] : [])];
+  const hayAcompanamiento = hayProt || hayHuevo || hayPrincipio;
 
   // Líquido + algo -> UN solo almuerzo
-  if (hayLiquido && (hayProt || hayHuevo)) {
+  if (hayLiquido && hayAcompanamiento) {
     return {
       tipo: especial ? "almuerzo_especial" : "almuerzo_normal",
-      descripcion: [txtLiquido, txtProt, txtHuevo].filter(Boolean).join(" + "),
+      descripcion: [txtLiquido, txtProt, txtPrincipio, txtHuevo].filter(Boolean).join(" + "),
+      principio: txtPrincipio,
       huevos: txtHuevo,
       precioUnit: especial ? p.almuerzoEspecial : p.almuerzoNormal,
       fijo: especial ? p.almuerzoEspecialFijo : p.almuerzoNormalFijo,
@@ -124,19 +133,25 @@ export function armarLinea({
     return {
       tipo: esSopa ? "solo_sopa" : "solo_caldo",
       descripcion: txtLiquido,
+      principio: "",
       huevos: "",
       precioUnit: propio ?? p.soloCaldo,
       fijo: propio ? true : p.soloCaldoFijo,
     };
   }
 
-  // Sin líquido: el seco, los huevos, o ambos
+  // Sin líquido: el seco, con lo que lo acompañe
   const propio =
-    todas.length === 1 && Number(todas[0].precio) > 0 ? Number(todas[0].precio) : null;
+    acompanan.length === 1 && Number(acompanan[0].precio) > 0
+      ? Number(acompanan[0].precio)
+      : null;
 
   return {
     tipo: "solo_seco",
-    descripcion: [hayProt ? `SECO: ${txtProt}` : "", txtHuevo].filter(Boolean).join(" + "),
+    descripcion: [hayProt ? `SECO: ${txtProt}` : "", txtPrincipio, txtHuevo]
+      .filter(Boolean)
+      .join(" + "),
+    principio: txtPrincipio,
     huevos: txtHuevo,
     precioUnit: propio ?? p.soloSeco,
     fijo: propio ? true : p.soloSecoFijo,

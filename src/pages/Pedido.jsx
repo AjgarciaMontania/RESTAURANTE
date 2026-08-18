@@ -21,6 +21,7 @@ import { MENU_ID } from "./MenuDia.jsx";
 const MENU_VACIO = {
   caldos: [],
   sopas: [],
+  principios: [],
   proteinas: [],
   huevos: [],
   adicionales: [],
@@ -40,6 +41,7 @@ export default function Pedido() {
   // Constructor de almuerzo
   const [caldoSel, setCaldoSel] = useState(null);
   const [sopaSel, setSopaSel] = useState(null);
+  const [principioSel, setPrincipioSel] = useState(null);
   const [protSel, setProtSel] = useState([]);
   const [huevoSel, setHuevoSel] = useState([]);
   const [especial, setEspecial] = useState(false);
@@ -65,6 +67,7 @@ export default function Pedido() {
 
   const caldos = conNombre(menu.caldos);
   const sopas = conNombre(menu.sopas);
+  const principios = conNombre(menu.principios);
   const proteinas = conNombre(menu.proteinas);
   const huevos = conNombre(menu.huevos);
   const adicionales = conNombre(menu.adicionales);
@@ -77,12 +80,13 @@ export default function Pedido() {
       armarLinea({
         caldo: caldoSel,
         sopa: sopaSel,
+        principio: principioSel,
         proteinas: protSel,
         huevos: huevoSel,
         especial,
         precios,
       }),
-    [caldoSel, sopaSel, protSel, huevoSel, especial, precios]
+    [caldoSel, sopaSel, principioSel, protSel, huevoSel, especial, precios]
   );
 
   const total = totalLineas(items);
@@ -108,6 +112,7 @@ export default function Pedido() {
     setItems((s) => [...s, { id: uid(), cant, ...previa }]);
     setCaldoSel(null);
     setSopaSel(null);
+    setPrincipioSel(null);
     setProtSel([]);
     setHuevoSel([]);
     setEspecial(false);
@@ -180,6 +185,7 @@ export default function Pedido() {
   const sinMenu =
     !caldos.length &&
     !sopas.length &&
+    !principios.length &&
     !proteinas.length &&
     !huevos.length &&
     !adicionales.length &&
@@ -238,7 +244,11 @@ export default function Pedido() {
         </div>
       )}
 
-      {(caldos.length > 0 || sopas.length > 0 || proteinas.length > 0 || huevos.length > 0) && (
+      {(caldos.length > 0 ||
+        sopas.length > 0 ||
+        principios.length > 0 ||
+        proteinas.length > 0 ||
+        huevos.length > 0) && (
         <div className="card">
           <h2>🍲 Armar almuerzo</h2>
 
@@ -272,6 +282,25 @@ export default function Pedido() {
                     key={x.id}
                     className={"chip" + (sopaSel?.id === x.id ? " on" : "")}
                     onClick={() => elegirSopa(x)}
+                  >
+                    {x.nombre}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+
+          {principios.length > 0 && (
+            <>
+              <p className="muted" style={{ fontSize: 12, margin: "0 0 8px" }}>
+                🫘 PRINCIPIOS <span style={{ opacity: .7 }}>(va incluido)</span>
+              </p>
+              <div className="chips" style={{ marginBottom: 14 }}>
+                {principios.map((x) => (
+                  <button
+                    key={x.id}
+                    className={"chip" + (principioSel?.id === x.id ? " on" : "")}
+                    onClick={() => setPrincipioSel(principioSel?.id === x.id ? null : x)}
                   >
                     {x.nombre}
                   </button>

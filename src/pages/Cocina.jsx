@@ -193,11 +193,16 @@ export default function Cocina() {
                 <ul className="ticket-items">
                   {(p.items || []).map((i, k) => {
                     const extra = EXTRAS[i.tipo];
-                    // Los huevos se separan del resto del plato
-                    const conHuevos = i.huevos && i.descripcion.includes(i.huevos);
-                    const plato = conHuevos
-                      ? i.descripcion.replace(" + " + i.huevos, "").replace(i.huevos, "")
-                      : i.descripcion;
+                    // El principio y los huevos salen en su propio renglón
+                    const rotulos = [
+                      { txt: i.principio, ic: "🫘", clase: "principio" },
+                      { txt: i.huevos, ic: "🍳", clase: "huevos" },
+                    ].filter((r) => r.txt && i.descripcion.includes(r.txt));
+
+                    const plato = rotulos.reduce(
+                      (d, r) => d.replace(" + " + r.txt, "").replace(r.txt, ""),
+                      i.descripcion
+                    );
 
                     return (
                       <li key={k} className={extra ? "extra " + extra.clase : ""}>
@@ -205,7 +210,11 @@ export default function Cocina() {
                         <span className="desc">
                           {plato || i.descripcion}
                           {extra && <em className="marca">{extra.texto}</em>}
-                          {conHuevos && <span className="huevos">🍳 {i.huevos}</span>}
+                          {rotulos.map((r) => (
+                            <span key={r.clase} className={"rotulo " + r.clase}>
+                              {r.ic} {r.txt}
+                            </span>
+                          ))}
                         </span>
                       </li>
                     );

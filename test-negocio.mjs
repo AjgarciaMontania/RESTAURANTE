@@ -283,4 +283,58 @@ const s5 = armarLinea({ caldo: pescado, sopa: verduras, proteinas: [arroz], espe
 chk6('Caldo y sopa juntos: manda el caldo', s5.descripcion, 'CALDO DE PESCADO + ARROZ');
 
 console.log(f6 ? `\n❌ ${f6} fallo(s) en sopas` : '\n✅ Sopas: todo pasa');
-process.exit(fallos + f2 + f3 + f4 + f5 + f6 ? 1 : 0);
+
+// ---------------------------------------------------------------
+// Principios: van incluidos en el plato, no suman aparte
+// ---------------------------------------------------------------
+console.log('\n--- Principios ---');
+let f7 = 0;
+const chk7 = (nom, real, esp) => {
+  const ok = real === esp;
+  if (!ok) f7++;
+  console.log(`${ok ? '✓' : '✗'} ${nom}  ->  ${real}${ok ? '' : `  (esperado ${esp})`}`);
+};
+
+const frijoles = { id: 'p1', nombre: 'Frijoles', precio: 0 };
+const macarrones = { id: 'p2', nombre: 'Principio de macarrones', precio: 0 };
+const lentejas = { id: 'p3', nombre: 'Lentejas', precio: 6000 };
+
+// El plato completo del almuerzo
+const g1 = armarLinea({ sopa: verduras, principio: frijoles, proteinas: [pechuga], especial: false, precios: P });
+chk7('Sopa + principio + proteina = un almuerzo', g1.precioUnit, 10000);
+chk7('  descripcion completa', g1.descripcion, 'SOPA DE VERDURAS + PECHUGA + PRINCIPIO: FRIJOLES');
+chk7('  el principio viene rotulado aparte', g1.principio, 'PRINCIPIO: FRIJOLES');
+
+// El principio no encarece el plato
+const g2 = armarLinea({ sopa: verduras, proteinas: [pechuga], especial: false, precios: P });
+chk7('Sin principio cuesta lo mismo', g2.precioUnit, g1.precioUnit);
+
+// Todo junto: sopa, principio, proteina y huevos, un solo cobro
+const g3 = armarLinea({ sopa: verduras, principio: frijoles, proteinas: [arroz], huevos: [revueltos], especial: false, precios: P });
+chk7('Plato completo con huevos', g3.precioUnit, 10000);
+chk7('  cada parte rotulada', g3.descripcion,
+  'SOPA DE VERDURAS + ARROZ + PRINCIPIO: FRIJOLES + HUEVOS: REVUELTOS');
+
+// Seco con principio, sin sopa
+const g4 = armarLinea({ principio: frijoles, proteinas: [pechuga], especial: false, precios: P });
+chk7('Seco con principio', g4.precioUnit, 8000);
+chk7('  descripcion', g4.descripcion, 'SECO: PECHUGA + PRINCIPIO: FRIJOLES');
+
+// No repite la palabra si el nombre ya la trae
+chk7('No repite "principio de"',
+  armarLinea({ principio: macarrones, proteinas: [arroz], especial: false, precios: P }).descripcion,
+  'SECO: ARROZ + PRINCIPIO: MACARRONES');
+
+// Solo el principio, con y sin precio propio
+chk7('Solo principio se cobra como seco',
+  armarLinea({ principio: frijoles, especial: false, precios: P }).precioUnit, 8000);
+chk7('Solo principio con precio propio',
+  armarLinea({ principio: lentejas, especial: false, precios: P }).precioUnit, 6000);
+chk7('  pero acompanado vuelve a almuerzo',
+  armarLinea({ sopa: verduras, principio: lentejas, especial: false, precios: P }).precioUnit, 10000);
+
+// Nada seleccionado sigue devolviendo null
+chk7('Sin nada devuelve null', armarLinea({ especial: false, precios: P }), null);
+
+console.log(f7 ? `\n❌ ${f7} fallo(s) en principios` : '\n✅ Principios: todo pasa');
+process.exit(fallos + f2 + f3 + f4 + f5 + f6 + f7 ? 1 : 0);
