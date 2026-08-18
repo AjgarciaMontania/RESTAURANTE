@@ -96,9 +96,9 @@ export default function MenuDia() {
           se guarda solo mientras escribes. Cámbialo cuando cambie tu carta.
         </p>
         <p className="muted" style={{ margin: "8px 0 0", fontSize: 13 }}>
-          En <b>Caldos</b>, <b>Proteínas</b> y <b>Huevos</b> el precio es opcional: vacío
-          usa el precio base de Ajustes, o en el caso de los huevos entra sin costo, solo
-          como indicación para la cocina.
+          Los <b>Huevos</b> cuentan como una proteína más: caldo + huevos se cobra como un
+          solo almuerzo, igual que con la pechuga. En <b>Caldos</b>, <b>Proteínas</b> y{" "}
+          <b>Huevos</b> el precio es opcional y solo manda cuando el plato va solo.
         </p>
       </div>
 

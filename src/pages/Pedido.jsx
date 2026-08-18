@@ -39,6 +39,7 @@ export default function Pedido() {
   // Constructor de almuerzo
   const [caldoSel, setCaldoSel] = useState(null);
   const [protSel, setProtSel] = useState([]);
+  const [huevoSel, setHuevoSel] = useState([]);
   const [especial, setEspecial] = useState(false);
   const [cant, setCant] = useState(1);
 
@@ -66,23 +67,31 @@ export default function Pedido() {
   const adicionales = conNombre(menu.adicionales);
   const especiales = conNombre(menu.especiales);
 
+  // El huevo cuenta como una proteína más: caldo + huevos = un solo almuerzo
+  const proteinasElegidas = useMemo(
+    () => [...protSel, ...huevoSel],
+    [protSel, huevoSel]
+  );
+
   const previa = useMemo(
-    () => armarLinea({ caldo: caldoSel, proteinas: protSel, especial, precios }),
-    [caldoSel, protSel, especial, precios]
+    () => armarLinea({ caldo: caldoSel, proteinas: proteinasElegidas, especial, precios }),
+    [caldoSel, proteinasElegidas, especial, precios]
   );
 
   const total = totalLineas(items);
 
-  const toggleProt = (p) =>
-    setProtSel((s) =>
-      s.find((x) => x.id === p.id) ? s.filter((x) => x.id !== p.id) : [...s, p]
-    );
+  const alternar = (lista, set) => (x) =>
+    set((s) => (s.find((y) => y.id === x.id) ? s.filter((y) => y.id !== x.id) : [...s, x]));
+
+  const toggleProt = alternar(protSel, setProtSel);
+  const toggleHuevo = alternar(huevoSel, setHuevoSel);
 
   const agregarAlmuerzo = () => {
     if (!previa) return;
     setItems((s) => [...s, { id: uid(), cant, ...previa }]);
     setCaldoSel(null);
     setProtSel([]);
+    setHuevoSel([]);
     setEspecial(false);
     setCant(1);
   };
@@ -210,7 +219,7 @@ export default function Pedido() {
         </div>
       )}
 
-      {(caldos.length > 0 || proteinas.length > 0) && (
+      {(caldos.length > 0 || proteinas.length > 0 || huevos.length > 0) && (
         <div className="card">
           <h2>🍲 Armar almuerzo</h2>
 
@@ -250,6 +259,25 @@ export default function Pedido() {
             </>
           )}
 
+          {huevos.length > 0 && (
+            <>
+              <p className="muted" style={{ fontSize: 12, margin: "0 0 8px" }}>
+                🍳 HUEVOS <span style={{ opacity: .7 }}>(cuentan como proteína)</span>
+              </p>
+              <div className="chips" style={{ marginBottom: 14 }}>
+                {huevos.map((h) => (
+                  <button
+                    key={h.id}
+                    className={"chip" + (huevoSel.find((x) => x.id === h.id) ? " on" : "")}
+                    onClick={() => toggleHuevo(h)}
+                  >
+                    {h.nombre}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+
           <div className="seg" style={{ marginBottom: 12 }}>
             <button className={!especial ? "on" : ""} onClick={() => setEspecial(false)}>
               Normal
@@ -275,20 +303,6 @@ export default function Pedido() {
               {previa.descripcion}
             </p>
           )}
-        </div>
-      )}
-
-      {huevos.length > 0 && (
-        <div className="card">
-          <h2>🍳 Huevos</h2>
-          <div className="chips">
-            {huevos.map((h) => (
-              <button key={h.id} className="chip" onClick={() => agregarSuelto(h, "huevo")}>
-                {h.nombre}
-                {Number(h.precio) > 0 && <span className="p">{money(h.precio)}</span>}
-              </button>
-            ))}
-          </div>
         </div>
       )}
 

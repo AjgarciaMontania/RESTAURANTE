@@ -180,4 +180,46 @@ chk4('Mezclados usan estado de cuenta',
   plantillaPara([{ tipo: 'deuda' }, { tipo: 'abono' }]), 'estado');
 
 console.log(f4 ? `\n❌ ${f4} fallo(s) en avisos` : '\n✅ Avisos: todo pasa');
-process.exit(fallos + f2 + f3 + f4 ? 1 : 0);
+
+
+// ---------------------------------------------------------------
+// El huevo cuenta como una proteína más
+// ---------------------------------------------------------------
+console.log('\n--- Huevos ---');
+let f5 = 0;
+const chk5 = (nom, real, esp) => {
+  const ok = real === esp;
+  if (!ok) f5++;
+  console.log(`${ok ? '✓' : '✗'} ${nom}  ->  ${real}${ok ? '' : `  (esperado ${esp})`}`);
+};
+
+const revueltos = { id: 'h1', nombre: 'Huevos revueltos', precio: 0 };
+const rancheros = { id: 'h2', nombre: 'Huevos rancheros', precio: 7000 };
+
+// Caldo + huevos = un solo almuerzo, igual que con la pechuga
+const h1 = armarLinea({ caldo: pescado, proteinas: [revueltos], especial: false, precios: P });
+chk5('Caldo + huevos = un almuerzo', h1.precioUnit, 10000);
+chk5('  descripcion', h1.descripcion, 'CALDO DE PESCADO + HUEVOS REVUELTOS');
+
+// Mezclando proteína y huevo sigue siendo un solo almuerzo
+const h2 = armarLinea({ caldo: pescado, proteinas: [arroz, revueltos], especial: false, precios: P });
+chk5('Caldo + arroz + huevos, un solo cobro', h2.precioUnit, 10000);
+
+// Solo huevos = seco
+const h3 = armarLinea({ caldo: null, proteinas: [revueltos], especial: false, precios: P });
+chk5('Solo huevos se cobra como seco', h3.precioUnit, 8000);
+
+// Un huevo con precio propio manda cuando va solo
+const h4 = armarLinea({ caldo: null, proteinas: [rancheros], especial: false, precios: P });
+chk5('Huevo con precio propio, solo', h4.precioUnit, 7000);
+
+// Pero acompañado del caldo sigue siendo el precio del almuerzo
+const h5 = armarLinea({ caldo: pescado, proteinas: [rancheros], especial: false, precios: P });
+chk5('Huevo con precio propio + caldo = almuerzo', h5.precioUnit, 10000);
+
+// Especial también aplica
+const h6 = armarLinea({ caldo: pescado, proteinas: [revueltos], especial: true, precios: P });
+chk5('Caldo + huevos marcado especial', h6.precioUnit, 13000);
+
+console.log(f5 ? `\n❌ ${f5} fallo(s) en huevos` : '\n✅ Huevos: todo pasa');
+process.exit(fallos + f2 + f3 + f4 + f5 ? 1 : 0);
