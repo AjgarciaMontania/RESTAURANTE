@@ -687,7 +687,7 @@ textarea {
 .seg.tres button { font-size: 14px; padding: 0 4px; }
 
 .foto-campo {
-  display: flex; gap: 12px; align-items: flex-start;
+  display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start;
   border: 1px solid var(--line); border-radius: 10px;
   padding: 10px; margin-bottom: 10px; background: var(--surface-2);
 }
@@ -702,7 +702,7 @@ textarea {
   position: absolute; inset: 0; display: grid; place-items: center;
   background: rgba(255, 255, 255, .8); font-size: 12px; font-weight: 700; color: var(--verde);
 }
-.foto-datos { display: flex; flex-direction: column; gap: 2px; font-size: 13px; min-width: 0; }
+.foto-datos { display: flex; flex-direction: column; gap: 2px; font-size: 13px; flex: 1 1 150px; min-width: 0; }
 
 .previa-carta {
   display: flex; align-items: center; gap: 10px; margin-top: 14px;
@@ -831,3 +831,20 @@ textarea {
 .card.plato-fila.especial { border-left: 4px solid var(--oro); }
 .previa-carta.especial { background: #fbf3e0; }
 .previa-carta.especial .plata { color: #8a5f12; }
+
+/* Galería de fotos ya subidas, dentro del campo de foto */
+.galeria {
+  flex-basis: 100%; padding: 10px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
+}
+.galeria-grid {
+  display: grid; gap: 6px;
+  grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+  max-height: 240px; overflow-y: auto;
+}
+.galeria-foto {
+  padding: 0; border: 2px solid transparent; border-radius: 8px;
+  background: none; cursor: pointer; overflow: hidden; line-height: 0;
+}
+.galeria-foto img { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; }
+.galeria-foto.on { border-color: var(--verde); }

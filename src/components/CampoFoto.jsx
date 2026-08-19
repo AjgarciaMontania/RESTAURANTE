@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { leerFoto, pesoFoto, subirFoto } from "../lib/fotos";
+import { leerFoto, listarGaleria, pesoFoto, subirFoto } from "../lib/fotos";
 
 /**
  * Una casilla de foto: se toma con la cámara o se elige de la galería.
@@ -11,6 +11,9 @@ export default function CampoFoto({ id, titulo, pista, onCambio }) {
   const [vista, setVista] = useState("");
   const [subiendo, setSubiendo] = useState(false);
   const [error, setError] = useState("");
+  /** null = cerrada, [] = cargando o vacía. */
+  const [galeria, setGaleria] = useState(null);
+  const [cargandoG, setCargandoG] = useState(false);
   const archivo = useRef(null);
 
   useEffect(() => {
@@ -43,6 +46,19 @@ export default function CampoFoto({ id, titulo, pista, onCambio }) {
     }
   };
 
+  const abrirGaleria = async () => {
+    if (galeria) return setGaleria(null);
+    setCargandoG(true);
+    try {
+      setGaleria(await listarGaleria());
+    } catch (err) {
+      console.error(err);
+      setError("No se pudo abrir la galería.");
+    } finally {
+      setCargandoG(false);
+    }
+  };
+
   return (
     <div className="foto-campo">
       <div className="foto-marco" onClick={() => !subiendo && archivo.current?.click()}>
@@ -68,6 +84,9 @@ export default function CampoFoto({ id, titulo, pista, onCambio }) {
           >
             {vista ? "Cambiar" : "📷 Tomar o elegir"}
           </button>
+          <button className="btn chico" disabled={subiendo || cargandoG} onClick={abrirGaleria}>
+            {cargandoG ? "Abriendo…" : "🖼 Ya la tengo"}
+          </button>
           {vista && (
             <button className="btn chico del" disabled={subiendo} onClick={() => onCambio("")}>
               Quitar
@@ -75,6 +94,43 @@ export default function CampoFoto({ id, titulo, pista, onCambio }) {
           )}
         </div>
       </div>
+
+      {galeria && (
+        <div className="galeria">
+          {galeria.length === 0 ? (
+            <p className="empty" style={{ padding: "8px 0" }}>
+              Todavía no has subido ninguna foto.
+            </p>
+          ) : (
+            <>
+              <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>
+                Fotos que ya subiste. Toca una para usarla otra vez.
+              </div>
+              <div className="galeria-grid">
+                {galeria.map((g) => (
+                  <button
+                    key={g.id}
+                    className={"galeria-foto" + (g.id === id ? " on" : "")}
+                    onClick={() => {
+                      onCambio(g.id);
+                      setGaleria(null);
+                    }}
+                  >
+                    <img src={g.mini} alt="" />
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+          <button
+            className="btn chico"
+            style={{ marginTop: 8 }}
+            onClick={() => setGaleria(null)}
+          >
+            Cerrar
+          </button>
+        </div>
+      )}
 
       <input
         ref={archivo}

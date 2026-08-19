@@ -4,6 +4,7 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDocs,
   onSnapshot,
   query,
   serverTimestamp,
@@ -35,6 +36,13 @@ import MiniFoto from "../components/MiniFoto.jsx";
  * Se arma con lo que esté marcado en el menú de hoy, así que nunca se puede
  * publicar un plato que la cocina no tiene.
  */
+/** Ayer, en formato YYYY-MM-DD. */
+const ayer = () => {
+  const d = new Date(hoy() + "T12:00:00Z");
+  d.setUTCDate(d.getUTCDate() - 1);
+  return d.toISOString().slice(0, 10);
+};
+
 export default function Carta() {
   const fecha = hoy();
   const [fijo, setFijo] = useState(MENU_VACIO);
@@ -111,6 +119,45 @@ export default function Carta() {
     }
   };
 
+  /**
+   * Rearma la carta de ayer con sus fotos.
+   *
+   * En un corrientazo el menú se repite mucho: es más rápido copiar y quitar
+   * lo que hoy no hay que volver a armar y fotografiar todo desde cero.
+   */
+  const copiarAyer = async () => {
+    setGuardando(true);
+    try {
+      const s = await getDocs(
+        query(collection(db, "platos"), where("fecha", "==", ayer()))
+      );
+      const deAyer = s.docs.map((d) => d.data());
+      if (!deAyer.length) {
+        alert("Ayer no quedó ninguna carta guardada.");
+        return;
+      }
+      if (
+        platos.length &&
+        !confirm(`Se agregan ${deAyer.length} plato(s) a la carta de hoy. ¿Seguimos?`)
+      )
+        return;
+
+      for (const p of deAyer)
+        await addDoc(collection(db, "platos"), {
+          ...limpiarPlato(p),
+          fecha,
+          creado: serverTimestamp(),
+        });
+
+      avisar(`Copiados ${deAyer.length} plato(s) ✓`);
+    } catch (e) {
+      console.error(e);
+      alert("No se pudo copiar la carta de ayer.");
+    } finally {
+      setGuardando(false);
+    }
+  };
+
   const borrar = async (p) => {
     if (!confirm("¿Quitar este plato de la carta?")) return;
     await deleteDoc(doc(db, "platos", p.id)).catch((e) => {
@@ -139,7 +186,8 @@ export default function Carta() {
         </h2>
         <p className="muted" style={{ margin: "0 0 12px", fontSize: 13 }}>
           Arma el plato como en el talonario, súbele la foto y sale en la pantalla del
-          comedor. El precio lo pone solo, con las mismas reglas de cobro.
+          comedor. El precio lo pone solo, con las mismas reglas de cobro. Las fotos
+          quedan guardadas: con <b>🖼 Ya la tengo</b> vuelves a usar una sin repetirla.
         </p>
         <div className="acciones">
           {!borrador && (
@@ -147,6 +195,9 @@ export default function Carta() {
               ➕ Armar plato
             </button>
           )}
+          <button className="btn chico" disabled={guardando} onClick={copiarAyer}>
+            ↩︎ Copiar la de ayer
+          </button>
           <a className="btn chico" href="#/carta" target="_blank" rel="noreferrer">
             📺 Abrir la pantalla
           </a>
