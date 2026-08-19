@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import {
   addDoc,
   collection,
@@ -327,6 +328,9 @@ export default function Caja() {
                     <button className="btn primary chico" onClick={() => abrirCobro(p)}>
                       💵 Cobrar
                     </button>
+                    <Link className="btn chico" to={`/pedido?editar=${p.id}`}>
+                      ✎ Corregir
+                    </Link>
                     <button className="btn chico" onClick={() => anular(p)}>
                       ⊘ Anular
                     </button>
@@ -422,6 +426,7 @@ export default function Caja() {
                     {p.cliente && <span className="muted">{p.cliente}</span>}
                     {p.paraLlevar && <span className="badge llevar">para llevar</span>}
                     {etiquetaEstado(p)}
+                    {p.modificado && <span className="badge cambiado">corregido</span>}
                     <b className="plata">{money(p.total)}</b>
                   </div>
 
@@ -441,6 +446,9 @@ export default function Caja() {
                             ↩︎ Reabrir cobro
                           </button>
                         )}
+                        <Link className="btn chico" to={`/pedido?editar=${p.id}`}>
+                          ✎ Corregir
+                        </Link>
                         <button className="btn chico" onClick={() => anular(p)}>
                           ⊘ Anular
                         </button>

@@ -1,17 +1,24 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   addDoc,
   collection,
   doc,
   onSnapshot,
+  query,
   runTransaction,
   serverTimestamp,
+  updateDoc,
+  where,
 } from "firebase/firestore";
 import { db, hoy } from "../firebase";
+import { useAdmin } from "../lib/admin.jsx";
 import {
   PRECIOS_DEF,
   armarLinea,
+  estadoPago,
   money,
+  receta,
   totalLineas,
   uid,
 } from "../lib/negocio";
@@ -26,9 +33,18 @@ import {
 
 export default function Pedido() {
   const fecha = hoy();
+  const { esAdmin } = useAdmin();
+  const [params, setParams] = useSearchParams();
+
   const [fijo, setFijo] = useState(MENU_VACIO);
   const [diario, setDiario] = useState(MENU_VACIO);
   const [precios, setPrecios] = useState(PRECIOS_DEF);
+  /** Pedidos de hoy que todavía se pueden corregir. */
+  const [abiertos, setAbiertos] = useState([]);
+  /** Pedido que se está corrigiendo, o null si es uno nuevo. */
+  const [editando, setEditando] = useState(null);
+  const [verAbiertos, setVerAbiertos] = useState(false);
+  const armador = useRef(null);
 
   const [mesa, setMesa] = useState("");
   const [cliente, setCliente] = useState("");
@@ -63,6 +79,24 @@ export default function Pedido() {
       c();
     };
   }, [fecha]);
+
+  /**
+   * Pedidos del día que todavía se pueden corregir.
+   *
+   * El mesero solo alcanza los que siguen en la cocina: si el plato ya salió,
+   * cambiarlo es decisión del administrador. Con PIN de admin se ven todos.
+   */
+  useEffect(() => {
+    const q = query(collection(db, "pedidos"), where("fecha", "==", fecha));
+    return onSnapshot(q, (snap) =>
+      setAbiertos(
+        snap.docs
+          .map((d) => ({ id: d.id, ...d.data() }))
+          .filter((p) => !p.anulado && (esAdmin || p.estado === "pendiente"))
+          .sort((a, b) => b.numero - a.numero)
+      )
+    );
+  }, [fecha, esAdmin]);
 
   // Solo lo disponible hoy. Si nadie marcó nada, se muestra el catálogo
   // completo con un aviso: mejor eso a dejar al mesero sin poder trabajar.
@@ -112,9 +146,7 @@ export default function Pedido() {
   const toggleProt = alternar(protSel, setProtSel);
   const toggleHuevo = alternar(huevoSel, setHuevoSel);
 
-  const agregarAlmuerzo = () => {
-    if (!previa) return;
-    setItems((s) => [...s, { id: uid(), cant, ...previa }]);
+  const limpiarArmador = () => {
     setCaldoSel(null);
     setSopaSel(null);
     setPrincipioSel(null);
@@ -122,6 +154,45 @@ export default function Pedido() {
     setHuevoSel([]);
     setEspecial(false);
     setCant(1);
+  };
+
+  const agregarAlmuerzo = () => {
+    if (!previa) return;
+    // La receta viaja con el renglón: es lo que permite repetirlo o corregirlo
+    // después, incluso con el pedido ya enviado a la cocina.
+    const compo = receta({
+      caldo: caldoSel,
+      sopa: sopaSel,
+      principio: principioSel,
+      proteinas: protSel,
+      huevos: huevoSel,
+      especial,
+    });
+    setItems((s) => [...s, { id: uid(), cant, ...previa, compo }]);
+    limpiarArmador();
+  };
+
+  /** Devuelve un plato al armador para repetirlo o corregirlo. */
+  const cargarReceta = (c) => {
+    if (!c) return;
+    setCaldoSel(c.caldo || null);
+    setSopaSel(c.sopa || null);
+    setPrincipioSel(c.principio || null);
+    setProtSel(c.proteinas || []);
+    setHuevoSel(c.huevos || []);
+    setEspecial(!!c.especial);
+    setCant(1);
+    armador.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  /** Lo copia al armador sin tocar el original: para el plato de al lado. */
+  const repetirLinea = (i) => cargarReceta(i.compo);
+
+  /** Lo saca del pedido y lo devuelve al armador para corregirlo. */
+  const corregirLinea = (i) => {
+    cargarReceta(i.compo);
+    setCant(i.cant);
+    quitar(i.id);
   };
 
   /**
@@ -157,9 +228,78 @@ export default function Pedido() {
 
   const quitar = (id) => setItems((s) => s.filter((i) => i.id !== id));
 
+  /** Trae un pedido ya enviado al talonario para corregirlo. */
+  const abrirPedido = (p) => {
+    setEditando({
+      id: p.id,
+      numero: p.numero,
+      estado: p.estado,
+      cobrado: estadoPago(p) !== "porCobrar",
+    });
+    setMesa(p.mesa || "");
+    setCliente(p.cliente || "");
+    setParaLlevar(!!p.paraLlevar);
+    setItems((p.items || []).map((i) => ({ ...i, id: uid() })));
+    limpiarArmador();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const salirEdicion = () => {
+    setEditando(null);
+    setItems([]);
+    setMesa("");
+    setCliente("");
+    setParaLlevar(false);
+    limpiarArmador();
+    if (params.get("editar")) setParams({}, { replace: true });
+  };
+
+  // Entrada desde Caja:  #/pedido?editar=<id>
+  const pedirEditar = params.get("editar");
+  useEffect(() => {
+    if (!pedirEditar || editando?.id === pedirEditar) return;
+    const p = abiertos.find((x) => x.id === pedirEditar);
+    if (p) abrirPedido(p);
+  }, [pedirEditar, abiertos]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const enviar = async () => {
     if (!items.length || enviando) return;
+
+    // Corregir un pedido existente en vez de crear uno nuevo
+    if (editando) {
+      setEnviando(true);
+      try {
+        const cambios = {
+          mesa: mesa.trim(),
+          cliente: cliente.trim(),
+          paraLlevar,
+          items: items.map(({ id, ...r }) => ({ ...r, total: r.cant * r.precioUnit })),
+          total,
+          modificado: true,
+          modificadoEn: serverTimestamp(),
+        };
+        // Si ya estaba cobrado, el valor cambió: hay que volver a liquidarlo
+        // para que la caja no quede descuadrada.
+        if (editando.cobrado) {
+          cambios.pago = "porCobrar";
+          cambios.abonado = 0;
+        }
+        await updateDoc(doc(db, "pedidos", editando.id), cambios);
+        const n = editando.numero;
+        salirEdicion();
+        setToast(
+          `Pedido #${n} corregido ✓${editando.cobrado ? " — vuelve a cobrarlo en Caja" : ""}`
+        );
+        setTimeout(() => setToast(""), 3000);
+      } catch (e) {
+        console.error(e);
+        alert("No se pudo guardar el cambio. Revisa la conexión.");
+      } finally {
+        setEnviando(false);
+      }
+      return;
+    }
+
     setEnviando(true);
     try {
       // Consecutivo diario seguro (aunque haya varios meseros a la vez)
@@ -184,6 +324,7 @@ export default function Pedido() {
         total,
         estado: "pendiente",
         anulado: false,
+        modificado: false,
         creado: serverTimestamp(),
       });
 
@@ -226,7 +367,62 @@ export default function Pedido() {
 
   return (
     <>
-      {sinSeleccion && (
+      {editando ? (
+        <div className="aviso editando">
+          <div>
+            ✎ Estás corrigiendo el <b>pedido #{editando.numero}</b>
+            {editando.estado === "entregado" && " (ya entregado)"}.
+            {editando.cobrado && (
+              <>
+                {" "}
+                <b>Ya estaba cobrado:</b> al guardar se reabre el cobro y hay que
+                liquidarlo otra vez en Caja.
+              </>
+            )}
+          </div>
+          <button className="btn chico" onClick={salirEdicion}>
+            Cancelar
+          </button>
+        </div>
+      ) : (
+        abiertos.length > 0 && (
+          // Plegado por defecto: casi siempre se entra a tomar un pedido nuevo,
+          // no a corregir, y en el celular cada centímetro cuenta.
+          <div className="card plegable">
+            <button className="plegar" onClick={() => setVerAbiertos((v) => !v)}>
+              <h2>
+                ✎ Corregir un pedido
+                <span className="count">{abiertos.length}</span>
+                <span className="flecha">{verAbiertos ? "▾" : "▸"}</span>
+              </h2>
+            </button>
+
+            {verAbiertos && (
+              <>
+                <p className="muted" style={{ fontSize: 12, margin: "0 0 10px" }}>
+                  {esAdmin
+                    ? "Toca el pedido que quieras corregir."
+                    : "Solo mientras siga en la cocina. Después lo corrige el administrador."}
+                </p>
+                <div className="chips">
+                  {abiertos.map((p) => (
+                    <button key={p.id} className="chip" onClick={() => abrirPedido(p)}>
+                      #{p.numero}
+                      <span className="p">
+                        {[p.mesa && `Mesa ${p.mesa}`, p.cliente, money(p.total)]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        )
+      )}
+
+      {sinSeleccion && !editando && (
         <div className="aviso">
           ⚠️ Nadie ha marcado el <b>menú de hoy</b>, así que aquí sale el catálogo
           completo. Ve a <b>Menú → Menú de hoy</b> y marca lo que hay.
@@ -276,7 +472,7 @@ export default function Pedido() {
         principios.length > 0 ||
         proteinas.length > 0 ||
         huevos.length > 0) && (
-        <div className="card">
+        <div className="card" ref={armador}>
           <h2>🍲 Armar almuerzo</h2>
 
           {caldos.length > 0 && (
@@ -462,7 +658,7 @@ export default function Pedido() {
 
       <div className="card">
         <h2>
-          🧾 Pedido
+          {editando ? `🧾 Pedido #${editando.numero}` : "🧾 Pedido"}
           {(mesa || cliente || paraLlevar) && (
             <span className="count">
               {[mesa && `Mesa ${mesa}`, cliente, paraLlevar && "Para llevar"]
@@ -476,10 +672,36 @@ export default function Pedido() {
           <p className="empty">Todavía no has agregado nada</p>
         ) : (
           <div className="lineas">
+            {items.some((i) => i.compo) && (
+              <p className="muted" style={{ fontSize: 12, margin: "0 0 10px" }}>
+                <b>↻</b> repite el plato para armar el siguiente · <b>✎</b> lo devuelve
+                arriba para corregirlo · <b>✕</b> lo quita
+              </p>
+            )}
             {items.map((i) => (
               <div className="linea" key={i.id}>
                 <div className="l-top">
                   <div className="l-desc">{i.descripcion}</div>
+                  {i.compo && (
+                    <>
+                      <button
+                        className="btn icon"
+                        title="Repetir este plato para armar el siguiente"
+                        aria-label="Repetir plato"
+                        onClick={() => repetirLinea(i)}
+                      >
+                        ↻
+                      </button>
+                      <button
+                        className="btn icon"
+                        title="Corregir este plato"
+                        aria-label="Corregir plato"
+                        onClick={() => corregirLinea(i)}
+                      >
+                        ✎
+                      </button>
+                    </>
+                  )}
                   <button
                     className="btn icon del"
                     aria-label="Quitar línea"
@@ -529,8 +751,18 @@ export default function Pedido() {
           disabled={!items.length || enviando}
           onClick={enviar}
         >
-          {enviando ? "Enviando…" : `📺 Enviar a cocina · ${money(total)}`}
+          {enviando
+            ? "Guardando…"
+            : editando
+            ? `✔ Guardar cambios en #${editando.numero} · ${money(total)}`
+            : `📺 Enviar a cocina · ${money(total)}`}
         </button>
+
+        {editando && (
+          <button className="btn block ghost" style={{ marginTop: 8 }} onClick={salirEdicion}>
+            Cancelar y dejarlo como estaba
+          </button>
+        )}
       </div>
 
       {toast && <div className="toast">{toast}</div>}

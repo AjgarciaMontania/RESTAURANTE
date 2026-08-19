@@ -7,6 +7,12 @@ import { useVersionCorta } from "../lib/version.js";
 const AVISO = 10;
 const URGENTE = 18;
 
+/**
+ * Cuánto tiempo una comanda corregida se queda de primera y parpadeando.
+ * Pasado ese rato conserva el sello, pero deja de robarse la atención.
+ */
+const RESALTE_MS = 60000;
+
 /** Renglones que no son el almuerzo: en la cocina tienen que saltar a la vista. */
 const EXTRAS = {
   adicional: { texto: "Adicional", clase: "adicional" },
@@ -117,6 +123,17 @@ export default function Cocina() {
     return ms ? Math.max(0, Math.floor((ahora - ms) / 60000)) : 0;
   };
 
+  /** ¿Lo acaban de corregir? Mientras tanto va de primero y parpadea. */
+  const recienCambiado = (p) => {
+    const ms = p.modificadoEn?.toMillis?.();
+    return !!p.modificado && !!ms && ahora - ms < RESALTE_MS;
+  };
+
+  // Lo corregido salta al frente: el cocinero tiene que volver a leerlo.
+  const enPantalla = [...pedidos].sort(
+    (a, b) => recienCambiado(b) - recienCambiado(a) || a.numero - b.numero
+  );
+
   const reloj = horaColombia(ahora);
   const d = new Date(fecha + "T12:00:00Z").toLocaleDateString("es-CO", {
     timeZone: ZONA,
@@ -168,18 +185,28 @@ export default function Cocina() {
         </div>
       ) : (
         <div className="tv-grid">
-          {pedidos.map((p) => {
+          {enPantalla.map((p) => {
             const m = minutos(p);
             const estado = m >= URGENTE ? "urgente" : m >= AVISO ? "aviso" : "";
+            const nuevoCambio = recienCambiado(p);
+            const clases = [
+              "ticket",
+              estado,
+              p.modificado ? "cambiado" : "",
+              nuevoCambio ? "fresco" : "",
+            ]
+              .filter(Boolean)
+              .join(" ");
             const piezas = (p.items || []).reduce((s, i) => s + i.cant, 0);
 
             return (
-              <article className={"ticket " + estado} key={p.id}>
+              <article className={clases} key={p.id}>
                 <div className="ticket-cinta" />
 
                 <header className="ticket-head">
                   <span className="num">#{p.numero}</span>
                   <div className="etiquetas">
+                    {p.modificado && <span className="etq cambiado">✎ Modificado</span>}
                     {p.mesa && <span className="etq mesa">Mesa {p.mesa}</span>}
                     {p.paraLlevar && <span className="etq llevar">🥡 Para llevar</span>}
                   </div>

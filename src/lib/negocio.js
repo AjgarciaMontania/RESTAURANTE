@@ -54,6 +54,25 @@ export const money = (n) =>
 export const uid = () => Math.random().toString(36).slice(2, 9);
 
 /**
+ * Deja de un ítem del menú solo lo necesario para volver a armar el plato.
+ *
+ * Se guarda con el pedido para poder repetirlo o corregirlo después. Los
+ * campos van siempre presentes porque Firestore no acepta `undefined`.
+ */
+export const soloDatos = (x) =>
+  x ? { id: x.id ?? "", nombre: x.nombre ?? "", precio: Number(x.precio) || 0 } : null;
+
+/** La receta de un renglón, para poder rearmarlo en el talonario. */
+export const receta = ({ caldo, sopa, principio, proteinas = [], huevos = [], especial }) => ({
+  caldo: soloDatos(caldo),
+  sopa: soloDatos(sopa),
+  principio: soloDatos(principio),
+  proteinas: proteinas.map(soloDatos),
+  huevos: huevos.map(soloDatos),
+  especial: !!especial,
+});
+
+/**
  * Quita del nombre la palabra que el rótulo ya dice, para no repetirla:
  * "HUEVOS: HUEVOS FRITOS" o "SOPA DE SOPA DE VERDURAS".
  */

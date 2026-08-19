@@ -96,7 +96,8 @@ input, button, select, textarea { font: inherit; color: inherit; }
   padding: 16px;
   margin-bottom: 14px;
 }
-.card > h2 {
+.card > h2,
+.card > .plegar > h2 {
   margin: 0 0 14px; padding-bottom: 10px;
   font-family: var(--serif); font-weight: 400;
   font-size: 19px; letter-spacing: .6px;
@@ -104,13 +105,15 @@ input, button, select, textarea { font: inherit; color: inherit; }
   border-bottom: 2px solid var(--oro);
   display: flex; align-items: center; gap: 9px;
 }
-.card > h2 .count {
+.card > h2 .count,
+.card > .plegar > h2 .count {
   margin-left: auto; color: var(--muted); font-size: 12px;
   font-family: system-ui, sans-serif; letter-spacing: 0;
   background: var(--surface-2); padding: 3px 10px; border-radius: 20px;
 }
 /* Secciones que no se marcan cada día: van siempre */
-.card > h2 .count.fija {
+.card > h2 .count.fija,
+.card > .plegar > h2 .count.fija {
   background: #f6dfae; color: #7a5510; font-weight: 700; letter-spacing: .04em;
 }
 .card.fija { border-left: 4px solid var(--oro); }
@@ -154,6 +157,7 @@ input::placeholder { color: #b3a794; }
 .btn.icon { min-width: var(--tap); padding: 0 12px; flex: none; }
 .btn.del { color: var(--danger); border-color: #e6c9c9; background: var(--danger-suave); }
 .btn:disabled { opacity: .45; cursor: not-allowed; }
+a.btn { text-decoration: none; color: inherit; }
 
 .muted { color: var(--muted); }
 .empty {
@@ -328,6 +332,12 @@ input.l-input {
   border-radius: 10px; padding: 12px 14px; margin-bottom: 14px;
   font-size: 13.5px; line-height: 1.5; color: #5c4413;
 }
+/* Barra de "estás corrigiendo el pedido #N" */
+.aviso.editando {
+  display: flex; align-items: center; gap: 12px;
+  background: #e8f0fb; border-color: #b9d2f0; border-left-color: #2f6fbf; color: #22456f;
+}
+.aviso.editando .btn { flex: none; }
 
 /* Panel de cobro dentro de un pedido pendiente */
 .cobro {
@@ -357,6 +367,7 @@ textarea {
 .badge.list { background: var(--verde-suave); color: var(--verde); }
 .badge.llevar { background: #f6e6c4; color: #7a5510; }
 .badge.fiado { background: #fbe3e3; color: #8f2f2f; }
+.badge.cambiado { background: #e0ecfa; color: #22456f; }
 
 /* ---------- Pantalla de cocina (TV) ----------
    Todo se mide en `em` respecto al font-size de .tv, que el componente
@@ -436,6 +447,18 @@ textarea {
 .ticket.urgente .ticket-cinta { background: #c2472f; }
 .ticket.urgente { box-shadow: 0 0 0 .17em #e0603f, 0 .6em 1.6em rgba(0, 0, 0, .32); }
 
+/* Comanda corregida: el cocinero tiene que volver a leerla */
+.ticket.cambiado .ticket-cinta { background: #2f6fbf; }
+.ticket.cambiado { box-shadow: 0 0 0 .17em #2f6fbf, 0 .6em 1.6em rgba(0, 0, 0, .32); }
+.ticket.cambiado.fresco { animation: latido 1.1s ease-in-out infinite; }
+@keyframes latido {
+  0%, 100% { box-shadow: 0 0 0 .17em #2f6fbf, 0 .6em 1.6em rgba(0, 0, 0, .32); }
+  50%      { box-shadow: 0 0 0 .42em #7db2f0, 0 .6em 1.6em rgba(0, 0, 0, .32); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ticket.cambiado.fresco { animation: none; }
+}
+
 .ticket-head {
   display: flex; align-items: center; gap: .7em;
   padding: .8em 1.1em .7em;
@@ -452,6 +475,9 @@ textarea {
   padding: .35em .8em; border-radius: 2em;
 }
 .ticket-head .etq.mesa { background: #eae1cd; color: #6b5a3f; }
+.ticket-head .etq.cambiado {
+  background: #2f6fbf; color: #fff; letter-spacing: .06em;
+}
 .ticket-head .etq.llevar { background: #f6dfae; color: #7a5510; box-shadow: inset 0 0 0 2px #d8a94f; }
 
 /* Banda del cliente: quién recibe el plato tiene que verse de una. */
@@ -642,3 +668,13 @@ textarea {
   25% { transform: translateX(-9px); }
   75% { transform: translateX(9px); }
 }
+
+/* Tarjeta que se pliega para no robar espacio en el celular */
+.card.plegable { padding-bottom: 16px; }
+.plegar {
+  display: block; width: 100%; padding: 0; margin: 0;
+  border: 0; background: none; cursor: pointer; text-align: left;
+}
+.card.plegable > .plegar > h2 { margin-bottom: 0; }
+.card.plegable > .plegar + * { margin-top: 14px; }
+.plegar .flecha { color: var(--muted); font-size: 13px; margin-left: 2px; }

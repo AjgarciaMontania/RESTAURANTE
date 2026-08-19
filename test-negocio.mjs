@@ -410,4 +410,54 @@ chk8('diarioVacio detecta lo marcado', diarioVacio({ sopas: ['s1'] }), false);
 chk8('menuVacio si cuenta las meriendas', menuVacio({ meriendas: [{ id: 'm1' }] }), false);
 
 console.log(f8 ? `\n❌ ${f8} fallo(s) en menu de hoy` : '\n✅ Menu de hoy: todo pasa');
-process.exit(fallos + f2 + f3 + f4 + f5 + f6 + f7 + f8 ? 1 : 0);
+
+// ---------------------------------------------------------------
+// Receta del renglon: lo que permite repetir o corregir un plato
+// ---------------------------------------------------------------
+import { receta, soloDatos } from './src/lib/negocio.js';
+
+console.log('\n--- Repetir y corregir ---');
+let f9 = 0;
+const chk9 = (nom, real, esp) => {
+  const ok = real === esp;
+  if (!ok) f9++;
+  console.log(`${ok ? '✓' : '✗'} ${nom}  ->  ${real}${ok ? '' : `  (esperado ${esp})`}`);
+};
+
+const rHueso = { id: 'c2', nombre: 'Hueso' };
+const rSudada = { id: 't9', nombre: 'Carne sudada', precio: 9000 };
+const rFrita = { id: 't8', nombre: 'Carne frita' };
+const rFrijoles = { id: 'p1', nombre: 'Frijoles' };
+const rAlverja = { id: 'p2', nombre: 'Alverja' };
+
+const rRec = receta({ caldo: rHueso, principio: rFrijoles, proteinas: [rSudada], huevos: [], especial: false });
+
+// Firestore rechaza undefined: todos los campos tienen que existir
+const rSinUndef = (o) => JSON.stringify(o) === JSON.stringify(JSON.parse(JSON.stringify(o)));
+chk9('La receta no lleva undefined', rSinUndef(rRec), true);
+chk9('Guarda el caldo', rRec.caldo.nombre, 'Hueso');
+chk9('  con precio numerico', rRec.caldo.precio, 0);
+chk9('Guarda el principio', rRec.principio.nombre, 'Frijoles');
+chk9('Guarda la proteina', rRec.proteinas[0].nombre, 'Carne sudada');
+chk9('  con su precio', rRec.proteinas[0].precio, 9000);
+chk9('Sopa vacia queda en null', rRec.sopa, null);
+chk9('Huevos vacios queda en lista', rRec.huevos.length, 0);
+chk9('soloDatos de nada es null', soloDatos(null), null);
+
+// Repetir la receta y cambiarle dos cosas da el segundo plato de la pareja
+const rPlato1 = armarLinea({ ...rRec, precios: PRECIOS_DEF });
+const rPlato2 = armarLinea({ ...rRec, principio: rAlverja, proteinas: [rFrita], precios: PRECIOS_DEF });
+chk9('Plato 1 de la pareja', rPlato1.descripcion, 'CALDO DE HUESO + CARNE SUDADA + PRINCIPIO: FRIJOLES');
+chk9('Plato 2 de la pareja', rPlato2.descripcion, 'CALDO DE HUESO + CARNE FRITA + PRINCIPIO: ALVERJA');
+chk9('Cada uno es un almuerzo', rPlato1.precioUnit, 10000);
+chk9('  el otro tambien', rPlato2.precioUnit, 10000);
+chk9('Los dos juntos son 2 almuerzos', totalLineas([
+  { cant: 1, precioUnit: rPlato1.precioUnit },
+  { cant: 1, precioUnit: rPlato2.precioUnit },
+]), 20000);
+
+// Dos platos identicos si caben en un solo renglon con cantidad 2
+chk9('Dos identicos en un renglon', totalLineas([{ cant: 2, precioUnit: rPlato1.precioUnit }]), 20000);
+
+console.log(f9 ? `\n❌ ${f9} fallo(s) en repetir y corregir` : '\n✅ Repetir y corregir: todo pasa');
+process.exit(fallos + f2 + f3 + f4 + f5 + f6 + f7 + f8 + f9 ? 1 : 0);
