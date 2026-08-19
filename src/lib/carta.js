@@ -19,10 +19,19 @@ export const PLATO_VACIO = {
   principio: null,
   proteinas: [],
   huevos: [],
+  /** Marcado como almuerzo especial: cambia el precio. */
   especial: false,
+  /** Plato de la sección ⭐ Especiales, con su propio precio. Va solo. */
+  deLaCasa: null,
   nota: "",
   fotos: [],
 };
+
+/** Los dos bloques en que se parte la carta del comedor. */
+export const BLOQUES = [
+  { clave: "corriente", titulo: "Menú del día" },
+  { clave: "especial", titulo: "Especiales de la casa" },
+];
 
 /** Máximo de fotos por plato: la del seco y la del caldo o la sopa. */
 export const MAX_FOTOS = 2;
@@ -34,7 +43,28 @@ export const ROTULOS_FOTO = [
 
 /** ¿Tiene al menos una cosa escogida? */
 export const hayPlato = (p) =>
-  !!(p?.caldo || p?.sopa || p?.principio || p?.proteinas?.length || p?.huevos?.length);
+  !!(
+    p?.deLaCasa ||
+    p?.caldo ||
+    p?.sopa ||
+    p?.principio ||
+    p?.proteinas?.length ||
+    p?.huevos?.length
+  );
+
+/**
+ * ¿Va en el bloque de especiales?
+ *
+ * Cuentan los dos: el plato de la sección ⭐ Especiales y el almuerzo que se
+ * marcó como Especial. Para el cliente son lo mismo: lo de más categoría.
+ */
+export const esEspecial = (p) => !!p?.deLaCasa || !!p?.especial;
+
+/** Parte la carta en los dos bloques que se proyectan. */
+export const separarPlatos = (platos = []) => ({
+  corriente: platos.filter((p) => !esEspecial(p)),
+  especial: platos.filter(esEspecial),
+});
 
 /** Mayúscula solo en la primera letra, sin gritarle al cliente. */
 export const capitalizar = (t) => {
@@ -52,6 +82,10 @@ export const capitalizar = (t) => {
  * @returns {{titulo: string, detalles: {ic: string, txt: string}[]}}
  */
 export function resumenPlato(p) {
+  // El plato de la casa se anuncia con su nombre y ya: es un plato completo.
+  if (p?.deLaCasa?.nombre)
+    return { titulo: capitalizar(p.deLaCasa.nombre), detalles: [] };
+
   const prot = (p?.proteinas || []).map((x) => capitalizar(x?.nombre)).filter(Boolean);
   const huevos = (p?.huevos || [])
     .map((x) => capitalizar(soloPreparacion(x?.nombre || "")))
@@ -91,11 +125,23 @@ export function resumenPlato(p) {
   };
 }
 
-/** Precio del plato según las mismas reglas de cobro del talonario. */
-export const precioPlato = (p, precios) => armarLinea({ ...p, precios })?.precioUnit ?? 0;
+/**
+ * Precio del plato, con las mismas reglas de cobro del talonario.
+ *
+ * El plato de la casa manda con su propio precio; si en el menú quedó sin
+ * precio, se cobra como almuerzo especial para no anunciar un plato en $0.
+ */
+export function precioPlato(p, precios) {
+  if (p?.deLaCasa) {
+    const propio = Number(p.deLaCasa.precio) || 0;
+    return propio > 0 ? propio : Number(precios?.almuerzoEspecial) || 0;
+  }
+  return armarLinea({ ...p, precios })?.precioUnit ?? 0;
+}
 
 /** Deja el plato listo para guardar en Firestore (sin `undefined`). */
 export const limpiarPlato = (p) => ({
+  deLaCasa: p.deLaCasa || null,
   caldo: p.caldo || null,
   sopa: p.sopa || null,
   principio: p.principio || null,

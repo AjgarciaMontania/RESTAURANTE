@@ -25,6 +25,7 @@ import {
   uid,
 } from "../lib/negocio";
 import SelectorCliente from "../components/SelectorCliente.jsx";
+import { usePlegado } from "../lib/plegar.js";
 
 import {
   MENU_ID,
@@ -47,6 +48,8 @@ export default function Pedido() {
   /** Pedido que se está corrigiendo, o null si es uno nuevo. */
   const [editando, setEditando] = useState(null);
   const [verAbiertos, setVerAbiertos] = useState(false);
+  /** Las meriendas están siempre disponibles, así que se pueden plegar. */
+  const [verMeriendas, alternarMeriendas] = usePlegado("meriendas");
   const armador = useRef(null);
 
   const [mesa, setMesa] = useState("");
@@ -159,6 +162,11 @@ export default function Pedido() {
   );
 
   const total = totalLineas(lineas);
+
+  /** Cuántas meriendas lleva el pedido, para verlo con la tarjeta plegada. */
+  const puestasMerienda = items
+    .filter((i) => i.tipo === "merienda")
+    .reduce((n, i) => n + i.cant, 0);
 
   const alternar = (lista, set) => (x) =>
     set((s) => (s.find((y) => y.id === x.id) ? s.filter((y) => y.id !== x.id) : [...s, x]));
@@ -432,7 +440,7 @@ export default function Pedido() {
           <div className="card plegable">
             <button className="plegar" onClick={() => setVerAbiertos((v) => !v)}>
               <h2>
-                ✎ Corregir un pedido
+                <span className="titulo">✎ Corregir un pedido</span>
                 <span className="count">{abiertos.length}</span>
                 <span className="flecha">{verAbiertos ? "▾" : "▸"}</span>
               </h2>
@@ -669,11 +677,18 @@ export default function Pedido() {
       )}
 
       {meriendas.length > 0 && (
-        <div className="card">
-          <h2>
-            🥟 Meriendas
-            <span className="count fija">Siempre</span>
-          </h2>
+        <div className="card plegable">
+          <button className="plegar" onClick={alternarMeriendas}>
+            <h2>
+              <span className="titulo">🥟 Meriendas</span>
+              {puestasMerienda > 0 && <span className="count on">×{puestasMerienda}</span>}
+              <span className="count fija">Siempre</span>
+              <span className="flecha">{verMeriendas ? "▾" : "▸"}</span>
+            </h2>
+          </button>
+
+          {verMeriendas && (
+          <>
           <p className="muted" style={{ fontSize: 12, margin: "0 0 10px" }}>
             Se cobran aparte. Toca varias veces para subir la cantidad.
           </p>
@@ -697,6 +712,8 @@ export default function Pedido() {
               );
             })}
           </div>
+          </>
+          )}
         </div>
       )}
 

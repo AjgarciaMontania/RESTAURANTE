@@ -22,6 +22,7 @@ import {
   resumenProductos,
 } from "../lib/negocio";
 import SelectorCliente from "../components/SelectorCliente.jsx";
+import { useVariosPlegados } from "../lib/plegar.js";
 
 export default function Caja() {
   const [fecha, setFecha] = useState(hoy());
@@ -34,6 +35,8 @@ export default function Caja() {
   const [cobrando, setCobrando] = useState(null); // id del pedido
   const [recibido, setRecibido] = useState("");
   const [clienteSel, setClienteSel] = useState(null);
+  /** Categorías del desglose que quedaron abiertas en este equipo. */
+  const [abiertas, alternarCat] = useVariosPlegados("desglose");
 
   useEffect(() => {
     const q = query(collection(db, "pedidos"), where("fecha", "==", fecha));
@@ -406,6 +409,9 @@ export default function Caja() {
           {r.categorias.length > 0 && (
             <div className="card">
               <h2>🍽️ Desglose por producto</h2>
+              <p className="muted" style={{ fontSize: 12, margin: "-6px 0 10px" }}>
+                Toca una categoría para ver qué se vendió dentro.
+              </p>
               <table className="tal desglose">
                 <thead>
                   <tr>
@@ -415,22 +421,37 @@ export default function Caja() {
                   </tr>
                 </thead>
                 <tbody>
-                  {r.categorias.map((c) => (
-                    <Fragment key={c.tipo}>
-                      <tr className="grupo">
-                        <td>{c.etiqueta}</td>
-                        <td className="n">{c.cant}</td>
-                        <td className="n">{money(c.total)}</td>
-                      </tr>
-                      {c.filas.map((f) => (
-                        <tr className="detalle" key={f.desc}>
-                          <td>{f.desc}</td>
-                          <td className="n">{f.cant}</td>
-                          <td className="n">{money(f.total)}</td>
+                  {r.categorias.map((c) => {
+                    const abierta = abiertas.has(c.tipo);
+                    const sePuede = c.filas.length > 0;
+
+                    return (
+                      <Fragment key={c.tipo}>
+                        <tr
+                          className={"grupo" + (sePuede ? " tocable" : "")}
+                          onClick={() => sePuede && alternarCat(c.tipo)}
+                        >
+                          <td>
+                            {sePuede && (
+                              <span className="flecha">{abierta ? "▾" : "▸"}</span>
+                            )}{" "}
+                            {c.etiqueta}
+                          </td>
+                          <td className="n">{c.cant}</td>
+                          <td className="n">{money(c.total)}</td>
                         </tr>
-                      ))}
-                    </Fragment>
-                  ))}
+
+                        {abierta &&
+                          c.filas.map((f) => (
+                            <tr className="detalle" key={f.desc}>
+                              <td>{f.desc}</td>
+                              <td className="n">{f.cant}</td>
+                              <td className="n">{money(f.total)}</td>
+                            </tr>
+                          ))}
+                      </Fragment>
+                    );
+                  })}
                 </tbody>
                 <tfoot>
                   <tr>

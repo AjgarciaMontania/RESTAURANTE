@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { collection, doc, onSnapshot, query, where } from "firebase/firestore";
 import { ZONA, db, hoy, horaColombia, recordar } from "../firebase";
 import { PRECIOS_DEF, money } from "../lib/negocio";
-import { precioPlato, resumenPlato } from "../lib/carta";
+import { BLOQUES, precioPlato, resumenPlato, separarPlatos } from "../lib/carta";
 import { fotoEnCache, leerFoto } from "../lib/fotos";
 import { useVersionCorta } from "../lib/version.js";
 
@@ -15,6 +15,7 @@ const MIN_ESCALA = 0.42;
  */
 const MAX_ESCALA = 3;
 const PASO = 0.05;
+
 
 /**
  * La carta en el TV del comedor: lo que hay hoy, con foto y precio.
@@ -102,6 +103,10 @@ export default function CartaTV() {
     recordar.guardar(CLAVE_ZOOM, String(z));
   };
 
+  // Los especiales van en su propio bloque: es lo que le da cara a la carta.
+  const grupos = separarPlatos(platos);
+  const hayDosBloques = grupos.corriente.length > 0 && grupos.especial.length > 0;
+
   const d = new Date(fecha + "T12:00:00Z").toLocaleDateString("es-CO", {
     timeZone: ZONA,
     weekday: "long",
@@ -143,35 +148,50 @@ export default function CartaTV() {
           <p>Los platos de hoy aparecen aquí solos, sin recargar</p>
         </div>
       ) : (
-        <div className="carta-grid">
-          {platos.map((p) => {
-            const { titulo, detalles } = resumenPlato(p);
-            const fotos = (p.fotos || []).filter(Boolean);
+        <div className="carta-bloques">
+          {BLOQUES.map((b) => {
+            const delBloque = grupos[b.clave];
+            if (!delBloque.length) return null;
 
             return (
-              <article className="plato" key={p.id}>
-                <div className="plato-foto">
-                  <Foto id={fotos[0]} onListo={() => setListas((n) => n + 1)} />
-                  {fotos[1] && (
-                    <div className="plato-foto2">
-                      <Foto id={fotos[1]} onListo={() => setListas((n) => n + 1)} />
-                    </div>
-                  )}
-                </div>
+              <section className={"carta-bloque " + b.clave} key={b.clave}>
+                {/* El rótulo solo aparece si de verdad hay dos grupos: con un
+                    solo tipo de plato, un encabezado suelto sobra. */}
+                {hayDosBloques && <h2 className="carta-rotulo">{b.titulo}</h2>}
 
-                <div className="plato-cuerpo">
-                  <h2>{titulo}</h2>
-                  <ul>
-                    {detalles.map((x, k) => (
-                      <li key={k}>
-                        <span aria-hidden="true">{x.ic}</span> {x.txt}
-                      </li>
-                    ))}
-                  </ul>
-                  {p.nota && <p className="plato-nota">{p.nota}</p>}
-                  <div className="plato-precio">{money(precioPlato(p, precios))}</div>
+                <div className="carta-grid">
+                  {delBloque.map((p) => {
+                    const { titulo, detalles } = resumenPlato(p);
+                    const fotos = (p.fotos || []).filter(Boolean);
+
+                    return (
+                      <article className={"plato " + b.clave} key={p.id}>
+                        <div className="plato-foto">
+                          <Foto id={fotos[0]} onListo={() => setListas((n) => n + 1)} />
+                          {fotos[1] && (
+                            <div className="plato-foto2">
+                              <Foto id={fotos[1]} onListo={() => setListas((n) => n + 1)} />
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="plato-cuerpo">
+                          <h2>{titulo}</h2>
+                          <ul>
+                            {detalles.map((x, k) => (
+                              <li key={k}>
+                                <span aria-hidden="true">{x.ic}</span> {x.txt}
+                              </li>
+                            ))}
+                          </ul>
+                          {p.nota && <p className="plato-nota">{p.nota}</p>}
+                          <div className="plato-precio">{money(precioPlato(p, precios))}</div>
+                        </div>
+                      </article>
+                    );
+                  })}
                 </div>
-              </article>
+              </section>
             );
           })}
         </div>

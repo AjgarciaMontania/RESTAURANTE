@@ -41,12 +41,25 @@ export default function ArmadorPlato({ menu, sel, onCambio }) {
   const principios = conNombre(menu.principios);
   const proteinas = conNombre(menu.proteinas);
   const huevos = conNombre(menu.huevos);
+  const deLaCasa = conNombre(menu.especiales);
+
+  /** Lo que se descarta al escoger un plato de la casa, y al revés. */
+  const SOLO_ARMADO = { caldo: null, sopa: null, principio: null, proteinas: [], huevos: [] };
 
   const uno = (campo, x, excluye) =>
     onCambio({
       [campo]: sel[campo]?.id === x.id ? null : x,
       ...(excluye ? { [excluye]: null } : {}),
+      // Un plato de la casa es un plato completo: no se arma con caldos.
+      deLaCasa: null,
     });
+
+  const elegirDeLaCasa = (x) =>
+    onCambio(
+      sel.deLaCasa?.id === x.id
+        ? { deLaCasa: null }
+        : { ...SOLO_ARMADO, deLaCasa: x, especial: false }
+    );
 
   const varios = (campo, x) => {
     const lista = sel[campo] || [];
@@ -54,11 +67,29 @@ export default function ArmadorPlato({ menu, sel, onCambio }) {
       [campo]: lista.find((y) => y.id === x.id)
         ? lista.filter((y) => y.id !== x.id)
         : [...lista, x],
+      deLaCasa: null,
     });
   };
 
   return (
     <>
+      <Fila
+        titulo="⭐ ESPECIALES DE LA CASA"
+        nota="van solos, con su propio precio"
+        filas={deLaCasa}
+        activo={(f) => sel.deLaCasa?.id === f.id}
+        alTocar={elegirDeLaCasa}
+      />
+
+      {sel.deLaCasa ? (
+        <p className="muted" style={{ fontSize: 12, margin: "0 0 6px" }}>
+          Un plato de la casa se anuncia solo. Para armar un corriente, apaga
+          <b> {sel.deLaCasa.nombre}</b>.
+        </p>
+      ) : null}
+
+      {!sel.deLaCasa && (
+      <>
       <Fila
         titulo="🍲 CALDOS"
         nota="desayuno"
@@ -93,6 +124,8 @@ export default function ArmadorPlato({ menu, sel, onCambio }) {
         activo={(f) => (sel.huevos || []).some((x) => x.id === f.id)}
         alTocar={(f) => varios("huevos", f)}
       />
+      </>
+      )}
     </>
   );
 }

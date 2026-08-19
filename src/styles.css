@@ -729,15 +729,20 @@ textarea {
 .tv.carta { display: flex; flex-direction: column; }
 .carta-grid {
   display: grid; gap: 1.1em;
+  /* El mínimo va en em a propósito: cuando el ajuste automático encoge la
+     letra, caben más columnas y todo el bloque baja de alto. Con auto-fit las
+     columnas vacías se colapsan y el alto deja de poder corregirse. */
   grid-template-columns: repeat(auto-fill, minmax(17em, 1fr));
   align-items: stretch;
-  margin: auto 0;
 }
 .plato {
   background: #fbf7ee; border-radius: .7em; overflow: hidden;
   box-shadow: 0 .6em 1.6em rgba(0, 0, 0, .3);
   display: flex; flex-direction: column;
 }
+/* Un plato solo no se estira de lado a lado del TV. */
+.carta-grid > .plato:only-child { max-width: 34em; margin: 0 auto; }
+
 .plato-foto { position: relative; aspect-ratio: 5 / 4; background: #14382c; }
 .plato-foto > img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .plato-sinfoto { display: grid; place-items: center; height: 100%; }
@@ -781,5 +786,48 @@ textarea {
 
 /* Desglose de caja: la categoría manda, el producto va indentado */
 .tal.desglose tr.grupo td { font-weight: 800; color: var(--verde); padding-top: 12px; }
+.tal.desglose tr.grupo.tocable { cursor: pointer; }
+.tal.desglose tr.grupo.tocable:active td { background: var(--verde-suave); }
+.tal.desglose tr.grupo .flecha { color: var(--muted); font-size: 12px; }
 .tal.desglose tr.detalle td { color: var(--muted); font-size: 13px; }
-.tal.desglose tr.detalle td:first-child { padding-left: 16px; }
+.tal.desglose tr.detalle td:first-child { padding-left: 20px; }
+
+/* Cabecera de tarjeta plegable: el título manda y las etiquetas no lo parten */
+.card > .plegar > h2 .titulo {
+  flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.card > .plegar > h2 .titulo ~ .count { margin-left: 0; flex: none; }
+/* Contador de lo que ya va en el pedido, visible con la tarjeta plegada */
+.card > .plegar > h2 .count.on {
+  background: var(--verde); color: #fdfbf6; font-weight: 700;
+}
+
+/* ---- Carta: los dos bloques del comedor ---- */
+.carta-bloques { display: flex; flex-direction: column; gap: 1.4em; margin: auto 0; }
+.carta-bloques .carta-grid { margin: 0; }
+
+.carta-rotulo {
+  margin: 0 0 .7em; padding-bottom: .3em;
+  font-family: var(--serif); font-weight: 400;
+  font-size: 1.5em; letter-spacing: .09em; text-transform: uppercase;
+  color: #e9c87d; position: relative;
+}
+.carta-rotulo::after {
+  content: ""; position: absolute; left: 0; bottom: 0;
+  width: 3.2em; height: .13em; background: #d8a94f; border-radius: 2px;
+}
+.carta-bloque.especial .carta-rotulo { color: #f3d79a; }
+
+/* Las tarjetas de especiales llevan la cinta dorada de la casa */
+.plato.especial { box-shadow: 0 0 0 .13em #d8a94f, 0 .6em 1.6em rgba(0, 0, 0, .32); }
+.plato.especial .plato-cuerpo h2 { color: #8a5f12; }
+.plato.especial .plato-precio { color: #a8631a; }
+
+/* Editor de la carta: rótulo de bloque y marca de especial */
+.rotulo-bloque {
+  margin: 4px 0 8px; font-family: var(--serif); font-size: 13px;
+  letter-spacing: .12em; text-transform: uppercase; color: var(--oro); font-weight: 700;
+}
+.card.plato-fila.especial { border-left: 4px solid var(--oro); }
+.previa-carta.especial { background: #fbf3e0; }
+.previa-carta.especial .plata { color: #8a5f12; }

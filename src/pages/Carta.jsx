@@ -14,13 +14,16 @@ import { db, hoy } from "../firebase";
 import { MENU_ID, MENU_VACIO, idDiario, menuDelDia, menuVacio } from "../lib/menu";
 import { PRECIOS_DEF, money } from "../lib/negocio";
 import {
+  BLOQUES,
   MAX_FOTOS,
   PLATO_VACIO,
   ROTULOS_FOTO,
+  esEspecial,
   hayPlato,
   limpiarPlato,
   precioPlato,
   resumenPlato,
+  separarPlatos,
 } from "../lib/carta";
 import ArmadorPlato from "../components/ArmadorPlato.jsx";
 import CampoFoto from "../components/CampoFoto.jsx";
@@ -68,6 +71,7 @@ export default function Carta() {
   }, [fecha]);
 
   const { menu } = useMemo(() => menuDelDia(fijo, diario), [fijo, diario]);
+  const grupos = useMemo(() => separarPlatos(platos), [platos]);
 
   const avisar = (t) => {
     setToast(t);
@@ -155,20 +159,22 @@ export default function Carta() {
 
           <ArmadorPlato menu={menu} sel={borrador} onCambio={cambiar} />
 
-          <div className="seg" style={{ marginBottom: 12 }}>
-            <button
-              className={!borrador.especial ? "on" : ""}
-              onClick={() => cambiar({ especial: false })}
-            >
-              Normal
-            </button>
-            <button
-              className={borrador.especial ? "on" : ""}
-              onClick={() => cambiar({ especial: true })}
-            >
-              Especial
-            </button>
-          </div>
+          {!borrador.deLaCasa && (
+            <div className="seg" style={{ marginBottom: 12 }}>
+              <button
+                className={!borrador.especial ? "on" : ""}
+                onClick={() => cambiar({ especial: false })}
+              >
+                Normal
+              </button>
+              <button
+                className={borrador.especial ? "on" : ""}
+                onClick={() => cambiar({ especial: true })}
+              >
+                Especial
+              </button>
+            </div>
+          )}
 
           <input
             type="text"
@@ -190,8 +196,13 @@ export default function Carta() {
           ))}
 
           {hayPlato(borrador) && (
-            <div className="previa-carta">
-              <b>{resumenPlato(borrador).titulo}</b>
+            <div className={"previa-carta" + (esEspecial(borrador) ? " especial" : "")}>
+              <div style={{ minWidth: 0 }}>
+                <b>{resumenPlato(borrador).titulo}</b>
+                <div className="muted" style={{ fontSize: 12 }}>
+                  Sale en <b>{esEspecial(borrador) ? "Especiales de la casa" : "Menú del día"}</b>
+                </div>
+              </div>
               <span className="plata">{money(precioPlato(borrador, precios))}</span>
             </div>
           )}
@@ -221,10 +232,14 @@ export default function Carta() {
         </div>
       )}
 
-      {platos.map((p) => {
-        const { titulo, detalles } = resumenPlato(p);
-        return (
-          <div className="card plato-fila" key={p.id}>
+      {BLOQUES.map((b) =>
+        grupos[b.clave].length === 0 ? null : (
+          <div key={b.clave}>
+            <p className="rotulo-bloque">{b.titulo}</p>
+            {grupos[b.clave].map((p) => {
+              const { titulo, detalles } = resumenPlato(p);
+              return (
+                <div className={"card plato-fila " + b.clave} key={p.id}>
             <div className="plato-minis">
               {(p.fotos || []).filter(Boolean).length === 0 ? (
                 <div className="mini vacia">📷</div>
@@ -244,24 +259,31 @@ export default function Carta() {
               <span className="plata">{money(precioPlato(p, precios))}</span>
             </div>
 
-            <div className="plato-acciones">
-              <button
-                className="btn icon"
-                aria-label="Editar plato"
-                onClick={() => {
-                  setBorrador({ ...PLATO_VACIO, ...p });
-                  window.scrollTo({ top: 0, behavior: "smooth" });
-                }}
-              >
-                ✎
-              </button>
-              <button className="btn icon del" aria-label="Quitar plato" onClick={() => borrar(p)}>
-                🗑
-              </button>
-            </div>
+                  <div className="plato-acciones">
+                    <button
+                      className="btn icon"
+                      aria-label="Editar plato"
+                      onClick={() => {
+                        setBorrador({ ...PLATO_VACIO, ...p });
+                        window.scrollTo({ top: 0, behavior: "smooth" });
+                      }}
+                    >
+                      ✎
+                    </button>
+                    <button
+                      className="btn icon del"
+                      aria-label="Quitar plato"
+                      onClick={() => borrar(p)}
+                    >
+                      🗑
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
-        );
-      })}
+        )
+      )}
 
       {toast && <div className="toast">{toast}</div>}
     </>

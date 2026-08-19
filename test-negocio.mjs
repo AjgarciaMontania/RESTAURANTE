@@ -522,6 +522,30 @@ chk10('Sin undefined para Firestore',
   JSON.stringify(guardable) === JSON.stringify(JSON.parse(JSON.stringify(guardable))), true);
 chk10('La sopa vacia queda en null', guardable.sopa, null);
 
+
+// --- Platos de la seccion Especiales, y los dos bloques del TV ---
+import { esEspecial, separarPlatos } from './src/lib/carta.js';
+
+const bandeja = { id: 'e1', nombre: 'Bandeja paisa', precio: 18000 };
+const casa = { ...PLATO_VACIO, deLaCasa: bandeja };
+
+chk10('El plato de la casa se anuncia con su nombre', resumenPlato(casa).titulo, 'Bandeja paisa');
+chk10('  sin renglones de detalle', resumenPlato(casa).detalles.length, 0);
+chk10('  y con su propio precio', precioPlato(casa, PRECIOS_DEF), 18000);
+chk10('  si no tiene precio, cobra como especial',
+  precioPlato({ ...PLATO_VACIO, deLaCasa: { id: 'e2', nombre: 'Sancocho' } }, PRECIOS_DEF), 13000);
+chk10('El plato de la casa ya se puede publicar', hayPlato(casa), true);
+chk10('  y se guarda para Firestore', limpiarPlato(casa).deLaCasa.nombre, 'Bandeja paisa');
+
+chk10('Es especial por ser de la casa', esEspecial(casa), true);
+chk10('Es especial por el interruptor', esEspecial({ ...completo, especial: true }), true);
+chk10('El corriente no es especial', esEspecial(completo), false);
+
+const partido = separarPlatos([completo, casa, { ...completo, especial: true }]);
+chk10('Un corriente en el bloque del dia', partido.corriente.length, 1);
+chk10('Dos en el bloque de especiales', partido.especial.length, 2);
+chk10('Sin platos no rompe', separarPlatos().corriente.length, 0);
+
 console.log(f10 ? `\n❌ ${f10} fallo(s) en carta` : '\n✅ Carta: todo pasa');
 
 // ---------------------------------------------------------------
@@ -582,9 +606,15 @@ chk11('Meriendas suman bien', mer.total, 22000);
 chk11('  y se abren por producto', mer.filas.length, 2);
 chk11('  la empanada junta los dos pedidos', mer.filas.find((f) => f.desc.includes('EMPANADA')).cant, 6);
 chk11('  ordenadas de mayor a menor', mer.filas[0].desc.includes('EMPANADA'), true);
-chk11('Los almuerzos no se abren', alm.filas.length, 0);
+chk11('Los almuerzos se abren por combinacion', alm.filas.length, 2);
 chk11('  pero si suman', alm.cant, 4);
 chk11('Las categorias van de mayor a menor', rCats[0].tipo, 'almuerzo_normal');
+chk11('  la combinacion mas vendida va de primera', alm.filas[0].cant, 3);
+
+// Los desechables no se abren: todos los renglones se llaman igual
+const conEmpaques = resumenProductos([{ items: [li('desechable', 4, 1000, 'DESECHABLES')] }]);
+chk11('Los desechables no se abren', conEmpaques[0].filas.length, 0);
+chk11('  pero suman', conEmpaques[0].total, 4000);
 
 console.log(f11 ? `\n❌ ${f11} fallo(s) en para llevar` : '\n✅ Para llevar y desglose: todo pasa');
 process.exit(fallos + f2 + f3 + f4 + f5 + f6 + f7 + f8 + f9 + f10 + f11 ? 1 : 0);

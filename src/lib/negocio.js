@@ -284,10 +284,10 @@ export const totalLineas = (items) =>
   items.reduce((s, i) => s + i.cant * i.precioUnit, 0);
 
 /**
- * Categorías que no se abren por producto: su etiqueta ya lo dice todo.
- * "Almuerzos normales ×20" se entiende; "Meriendas $54.000" no.
+ * La única categoría que no se abre: todos sus renglones se llaman igual,
+ * así que el detalle repetiría la misma línea del total.
  */
-const SIN_DETALLE = new Set(["almuerzo_normal", "almuerzo_especial", "desechable"]);
+const SIN_DETALLE = new Set(["desechable"]);
 
 /**
  * Lo vendido en el día, agrupado por categoría y detallado por producto.
