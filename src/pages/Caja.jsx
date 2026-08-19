@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   addDoc,
@@ -13,13 +13,13 @@ import {
 } from "firebase/firestore";
 import { db, hoy } from "../firebase";
 import {
-  ETIQUETA_TIPO,
   PRECIOS_DEF,
   entroACaja,
   esAlmuerzo,
   estadoPago,
   money,
   quedoDebiendo,
+  resumenProductos,
 } from "../lib/negocio";
 import SelectorCliente from "../components/SelectorCliente.jsx";
 
@@ -59,17 +59,13 @@ export default function Caja() {
 
   const r = useMemo(() => {
     const validos = pedidos.filter((p) => !p.anulado);
-    const porTipo = {};
     let almuerzos = 0;
 
     for (const p of validos)
-      for (const i of p.items || []) {
-        const t = porTipo[i.tipo] || { cant: 0, monto: 0 };
-        t.cant += i.cant;
-        t.monto += i.cant * i.precioUnit;
-        porTipo[i.tipo] = t;
-        if (esAlmuerzo(i.tipo)) almuerzos += i.cant;
-      }
+      for (const i of p.items || []) if (esAlmuerzo(i.tipo)) almuerzos += i.cant;
+
+    // Detallado por producto: "Meriendas $54.000" no dice qué se vendió.
+    const categorias = resumenProductos(validos);
 
     const pendientes = validos.filter((p) => estadoPago(p) === "porCobrar");
 
@@ -82,14 +78,24 @@ export default function Caja() {
       sinCobrar: pendientes.reduce((s, p) => s + (p.total || 0), 0),
       vendido: validos.reduce((s, p) => s + (p.total || 0), 0),
       almuerzos,
-      porTipo,
+      categorias,
     };
   }, [pedidos]);
+
+  /** El cliente del pedido, tal como lo dejó el talonario. */
+  const clienteDe = (p) =>
+    p.clienteId
+      ? clientes.find((c) => c.id === p.clienteId) || {
+          id: p.clienteId,
+          nombre: p.cliente || "",
+          telefono: p.clienteTel || "",
+        }
+      : null;
 
   const abrirCobro = (p) => {
     setCobrando(cobrando === p.id ? null : p.id);
     setRecibido(String(p.total || ""));
-    setClienteSel(null);
+    setClienteSel(clienteDe(p));
   };
 
   /**
@@ -125,7 +131,11 @@ export default function Caja() {
     await updateDoc(doc(db, "pedidos", p.id), {
       pago: falta === 0 ? "pagado" : rec === 0 ? "fiado" : "parcial",
       abonado: rec,
-      clienteId: falta > 0 ? clienteSel.id : "",
+      // El cliente queda amarrado aunque haya pagado completo: sirve para el
+      // historial y para saber quién comió qué.
+      clienteId: clienteSel?.id || "",
+      cliente: clienteSel?.nombre || p.cliente || "",
+      clienteTel: clienteSel?.telefono || "",
       clienteFiado: falta > 0 ? clienteSel.nombre : "",
       cobrado: serverTimestamp(),
     });
@@ -188,6 +198,12 @@ export default function Caja() {
           i.precioUnit,
           i.cant * i.precioUnit,
         ]);
+    filas.push([], ["DESGLOSE POR PRODUCTO"], ["Categoria", "Producto", "Cantidad", "Monto"]);
+    for (const c of r.categorias) {
+      filas.push([c.etiqueta, "", c.cant, c.total]);
+      for (const f of c.filas) filas.push(["", f.desc, f.cant, f.total]);
+    }
+
     filas.push(
       [],
       ["", "", "", "", "", "", "", "", "EN CAJA", r.enCaja],
@@ -281,36 +297,42 @@ export default function Caja() {
                     {(() => {
                       const rec = Math.max(0, Math.min(p.total || 0, Number(recibido) || 0));
                       const falta = (p.total || 0) - rec;
-
-                      if (falta <= 0)
-                        return (
-                          <p className="muted" style={{ fontSize: 13, margin: "10px 0 0" }}>
-                            Paga completo: entran <b>{money(rec)}</b> a la caja.
-                          </p>
-                        );
-
-                      if (!cfg.usarFiados)
-                        return (
-                          <p className="muted" style={{ fontSize: 13, margin: "10px 0 0" }}>
-                            Los fiados están apagados en Ajustes, así que no se puede
-                            dejar un saldo pendiente.
-                          </p>
-                        );
+                      const sinFiados = falta > 0 && !cfg.usarFiados;
 
                       return (
-                        <div style={{ marginTop: 10 }}>
-                          <div className="muted" style={{ fontSize: 13, marginBottom: 6 }}>
-                            Quedan debiendo{" "}
-                            <b style={{ color: "var(--danger)" }}>{money(falta)}</b>. ¿A nombre
-                            de quién? Se anota en su cuenta; el aviso por WhatsApp lo mandas
-                            tú desde Fiados.
+                        <>
+                          <div className="muted" style={{ fontSize: 12, margin: "12px 0 6px" }}>
+                            {falta > 0 ? (
+                              <>
+                                Quedan debiendo{" "}
+                                <b style={{ color: "var(--danger)" }}>{money(falta)}</b>. ¿A
+                                nombre de quién? Se anota en su cuenta; el aviso por WhatsApp
+                                lo mandas tú desde Fiados.
+                              </>
+                            ) : (
+                              "Cliente del pedido (opcional)"
+                            )}
                           </div>
-                          <SelectorCliente
-                            clientes={clientes}
-                            valor={clienteSel}
-                            onElegir={setClienteSel}
-                          />
-                        </div>
+
+                          {sinFiados ? (
+                            <p className="muted" style={{ fontSize: 13, margin: 0 }}>
+                              Los fiados están apagados en Ajustes, así que no se puede dejar
+                              un saldo pendiente.
+                            </p>
+                          ) : (
+                            <SelectorCliente
+                              clientes={clientes}
+                              valor={clienteSel}
+                              onElegir={setClienteSel}
+                            />
+                          )}
+
+                          {falta <= 0 && (
+                            <p className="muted" style={{ fontSize: 13, margin: "10px 0 0" }}>
+                              Paga completo: entran <b>{money(rec)}</b> a la caja.
+                            </p>
+                          )}
+                        </>
                       );
                     })()}
 
@@ -381,10 +403,10 @@ export default function Caja() {
             </p>
           </div>
 
-          {Object.keys(r.porTipo).length > 0 && (
+          {r.categorias.length > 0 && (
             <div className="card">
-              <h2>🍽️ Desglose</h2>
-              <table className="tal">
+              <h2>🍽️ Desglose por producto</h2>
+              <table className="tal desglose">
                 <thead>
                   <tr>
                     <th>Concepto</th>
@@ -393,12 +415,21 @@ export default function Caja() {
                   </tr>
                 </thead>
                 <tbody>
-                  {Object.entries(r.porTipo).map(([tipo, v]) => (
-                    <tr key={tipo}>
-                      <td>{ETIQUETA_TIPO[tipo] || tipo}</td>
-                      <td className="n">{v.cant}</td>
-                      <td className="n">{money(v.monto)}</td>
-                    </tr>
+                  {r.categorias.map((c) => (
+                    <Fragment key={c.tipo}>
+                      <tr className="grupo">
+                        <td>{c.etiqueta}</td>
+                        <td className="n">{c.cant}</td>
+                        <td className="n">{money(c.total)}</td>
+                      </tr>
+                      {c.filas.map((f) => (
+                        <tr className="detalle" key={f.desc}>
+                          <td>{f.desc}</td>
+                          <td className="n">{f.cant}</td>
+                          <td className="n">{money(f.total)}</td>
+                        </tr>
+                      ))}
+                    </Fragment>
                   ))}
                 </tbody>
                 <tfoot>

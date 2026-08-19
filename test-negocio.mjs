@@ -523,4 +523,68 @@ chk10('Sin undefined para Firestore',
 chk10('La sopa vacia queda en null', guardable.sopa, null);
 
 console.log(f10 ? `\n❌ ${f10} fallo(s) en carta` : '\n✅ Carta: todo pasa');
-process.exit(fallos + f2 + f3 + f4 + f5 + f6 + f7 + f8 + f9 + f10 ? 1 : 0);
+
+// ---------------------------------------------------------------
+// Desechables del "para llevar" y desglose por producto
+// ---------------------------------------------------------------
+import { empaquesPedido, lineaDesechables, resumenProductos } from './src/lib/negocio.js';
+
+console.log('\n--- Para llevar y desglose ---');
+let f11 = 0;
+const chk11 = (nom, real, esp) => {
+  const ok = real === esp;
+  if (!ok) f11++;
+  console.log(`${ok ? '✓' : '✗'} ${nom}  ->  ${real}${ok ? '' : `  (esperado ${esp})`}`);
+};
+
+const PD = { ...PRECIOS_DEF, desechable: 1000 };
+const li = (tipo, cant = 1, precioUnit = 10000, descripcion = 'X') => ({ tipo, cant, precioUnit, descripcion });
+
+// La regla de Alvaro: completo 2 empaques, individual 1
+chk11('Almuerzo completo son 2 empaques', empaquesPedido([li('almuerzo_normal')]), 2);
+chk11('Almuerzo especial tambien', empaquesPedido([li('almuerzo_especial')]), 2);
+chk11('Solo caldo es 1', empaquesPedido([li('solo_caldo')]), 1);
+chk11('Solo sopa es 1', empaquesPedido([li('solo_sopa')]), 1);
+chk11('Solo seco es 1', empaquesPedido([li('solo_seco')]), 1);
+chk11('El especial es 1', empaquesPedido([li('especial')]), 1);
+chk11('Adicional no empaca', empaquesPedido([li('adicional')]), 0);
+chk11('Merienda no empaca', empaquesPedido([li('merienda')]), 0);
+chk11('Dos almuerzos son 4', empaquesPedido([li('almuerzo_normal', 2)]), 4);
+
+// El renglon que se agrega al pedido
+const d1 = lineaDesechables([li('almuerzo_normal')], true, PD);
+chk11('Almuerzo para llevar cobra 2000', d1.cant * d1.precioUnit, 2000);
+const d2 = lineaDesechables([li('solo_seco')], true, PD);
+chk11('Seco para llevar cobra 1000', d2.cant * d2.precioUnit, 1000);
+const d3 = lineaDesechables([li('almuerzo_normal'), li('solo_caldo'), li('merienda', 3, 3000)], true, PD);
+chk11('Mezcla: 2 + 1 + 0 = 3000', d3.cant * d3.precioUnit, 3000);
+
+chk11('En la mesa no cobra', lineaDesechables([li('almuerzo_normal')], false, PD), null);
+chk11('Solo meriendas no cobra', lineaDesechables([li('merienda', 3, 3000)], true, PD), null);
+chk11('Apagado en Ajustes no cobra',
+  lineaDesechables([li('almuerzo_normal')], true, { ...PD, cobrarDesechable: false }), null);
+
+// El rTotal del pedido: almuerzo + 2 desechables
+const conEmpaque = [li('almuerzo_normal'), d1];
+chk11('Almuerzo para llevar total', totalLineas(conEmpaque), 12000);
+
+// --- Desglose por producto ---
+const ventasDia = [
+  { items: [li('merienda', 5, 3000, 'MERIENDA: EMPANADA'), li('merienda', 2, 2000, 'MERIENDA: BUÑUELO')] },
+  { items: [li('merienda', 1, 3000, 'MERIENDA: EMPANADA'), li('almuerzo_normal', 3, 10000, 'CALDO + CARNE')] },
+  { items: [li('almuerzo_normal', 1, 10000, 'SOPA + PECHUGA')] },
+];
+const rCats = resumenProductos(ventasDia);
+const mer = rCats.find((c) => c.tipo === 'merienda');
+const alm = rCats.find((c) => c.tipo === 'almuerzo_normal');
+
+chk11('Meriendas suman bien', mer.total, 22000);
+chk11('  y se abren por producto', mer.filas.length, 2);
+chk11('  la empanada junta los dos pedidos', mer.filas.find((f) => f.desc.includes('EMPANADA')).cant, 6);
+chk11('  ordenadas de mayor a menor', mer.filas[0].desc.includes('EMPANADA'), true);
+chk11('Los almuerzos no se abren', alm.filas.length, 0);
+chk11('  pero si suman', alm.cant, 4);
+chk11('Las categorias van de mayor a menor', rCats[0].tipo, 'almuerzo_normal');
+
+console.log(f11 ? `\n❌ ${f11} fallo(s) en para llevar` : '\n✅ Para llevar y desglose: todo pasa');
+process.exit(fallos + f2 + f3 + f4 + f5 + f6 + f7 + f8 + f9 + f10 + f11 ? 1 : 0);

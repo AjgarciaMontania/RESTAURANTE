@@ -15,13 +15,16 @@ import { db, hoy } from "../firebase";
 import { useAdmin } from "../lib/admin.jsx";
 import {
   PRECIOS_DEF,
+  TIPO_DESECHABLE,
   armarLinea,
   estadoPago,
+  lineaDesechables,
   money,
   receta,
   totalLineas,
   uid,
 } from "../lib/negocio";
+import SelectorCliente from "../components/SelectorCliente.jsx";
 
 import {
   MENU_ID,
@@ -47,9 +50,13 @@ export default function Pedido() {
   const armador = useRef(null);
 
   const [mesa, setMesa] = useState("");
-  const [cliente, setCliente] = useState("");
+  /** Cliente amarrado al pedido; queda pegado hasta la caja y los fiados. */
+  const [clienteSel, setClienteSel] = useState(null);
+  const [clientes, setClientes] = useState([]);
   const [paraLlevar, setParaLlevar] = useState(false);
   const [items, setItems] = useState([]);
+  /** Precio de desechable digitado a mano, cuando en Ajustes no es fijo. */
+  const [desechUnit, setDesechUnit] = useState(null);
 
   // Constructor de almuerzo
   const [caldoSel, setCaldoSel] = useState(null);
@@ -98,6 +105,14 @@ export default function Pedido() {
     );
   }, [fecha, esAdmin]);
 
+  useEffect(
+    () =>
+      onSnapshot(collection(db, "clientes"), (s) =>
+        setClientes(s.docs.map((d) => ({ id: d.id, ...d.data() })))
+      ),
+    []
+  );
+
   // Solo lo disponible hoy. Si nadie marcó nada, se muestra el catálogo
   // completo con un aviso: mejor eso a dejar al mesero sin poder trabajar.
   const { menu, sinSeleccion } = useMemo(() => menuDelDia(fijo, diario), [fijo, diario]);
@@ -128,7 +143,22 @@ export default function Pedido() {
     [caldoSel, sopaSel, principioSel, protSel, huevoSel, especial, precios]
   );
 
-  const total = totalLineas(items);
+  /**
+   * El empaque de "para llevar" no se agrega a mano: se recalcula solo cada
+   * vez que cambia el pedido, y desaparece si se desmarca "para llevar".
+   */
+  const desechables = useMemo(() => {
+    const l = lineaDesechables(items, paraLlevar, precios);
+    if (!l) return null;
+    return desechUnit == null ? l : { ...l, precioUnit: desechUnit };
+  }, [items, paraLlevar, precios, desechUnit]);
+
+  const lineas = useMemo(
+    () => (desechables ? [...items, desechables] : items),
+    [items, desechables]
+  );
+
+  const total = totalLineas(lineas);
 
   const alternar = (lista, set) => (x) =>
     set((s) => (s.find((y) => y.id === x.id) ? s.filter((y) => y.id !== x.id) : [...s, x]));
@@ -228,6 +258,13 @@ export default function Pedido() {
 
   const quitar = (id) => setItems((s) => s.filter((i) => i.id !== id));
 
+  /** El cliente viaja con el pedido: caja y fiados lo necesitan amarrado. */
+  const datosCliente = () => ({
+    cliente: clienteSel?.nombre || "",
+    clienteId: clienteSel?.id || "",
+    clienteTel: clienteSel?.telefono || "",
+  });
+
   /** Trae un pedido ya enviado al talonario para corregirlo. */
   const abrirPedido = (p) => {
     setEditando({
@@ -237,9 +274,11 @@ export default function Pedido() {
       cobrado: estadoPago(p) !== "porCobrar",
     });
     setMesa(p.mesa || "");
-    setCliente(p.cliente || "");
+    setClienteSel(p.clienteId ? { id: p.clienteId, nombre: p.cliente, telefono: p.clienteTel || "" } : null);
     setParaLlevar(!!p.paraLlevar);
-    setItems((p.items || []).map((i) => ({ ...i, id: uid() })));
+    // El renglón de desechables se vuelve a calcular solo: no se carga.
+    setItems((p.items || []).filter((i) => i.tipo !== TIPO_DESECHABLE).map((i) => ({ ...i, id: uid() })));
+    setDesechUnit(null);
     limpiarArmador();
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -248,8 +287,9 @@ export default function Pedido() {
     setEditando(null);
     setItems([]);
     setMesa("");
-    setCliente("");
+    setClienteSel(null);
     setParaLlevar(false);
+    setDesechUnit(null);
     limpiarArmador();
     if (params.get("editar")) setParams({}, { replace: true });
   };
@@ -271,9 +311,9 @@ export default function Pedido() {
       try {
         const cambios = {
           mesa: mesa.trim(),
-          cliente: cliente.trim(),
+          ...datosCliente(),
           paraLlevar,
-          items: items.map(({ id, ...r }) => ({ ...r, total: r.cant * r.precioUnit })),
+          items: lineas.map(({ id, ...r }) => ({ ...r, total: r.cant * r.precioUnit })),
           total,
           modificado: true,
           modificadoEn: serverTimestamp(),
@@ -315,12 +355,12 @@ export default function Pedido() {
         numero,
         fecha,
         mesa: mesa.trim(),
-        cliente: cliente.trim(),
+        ...datosCliente(),
         paraLlevar,
         // Se sirve primero y se liquida después, desde Caja
         pago: "porCobrar",
         abonado: 0,
-        items: items.map(({ id, ...r }) => ({ ...r, total: r.cant * r.precioUnit })),
+        items: lineas.map(({ id, ...r }) => ({ ...r, total: r.cant * r.precioUnit })),
         total,
         estado: "pendiente",
         anulado: false,
@@ -331,8 +371,9 @@ export default function Pedido() {
 
       setItems([]);
       setMesa("");
-      setCliente("");
+      setClienteSel(null);
       setParaLlevar(false);
+      setDesechUnit(null);
       setToast(`Pedido #${numero} enviado a cocina ✓`);
       setTimeout(() => setToast(""), 2200);
     } catch (e) {
@@ -445,13 +486,16 @@ export default function Pedido() {
           )}
 
           {precios.usarCliente && (
-            <input
-              type="text"
-              placeholder="Nombre del cliente (opcional)"
-              value={cliente}
-              onChange={(e) => setCliente(e.target.value)}
-              style={{ marginBottom: precios.usarParaLlevar ? 8 : 0 }}
-            />
+            <div style={{ marginBottom: precios.usarParaLlevar ? 10 : 0 }}>
+              <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>
+                Cliente (opcional) — queda amarrado hasta la caja
+              </div>
+              <SelectorCliente
+                clientes={clientes}
+                valor={clienteSel}
+                onElegir={setClienteSel}
+              />
+            </div>
           )}
 
           {precios.usarParaLlevar && (
@@ -659,9 +703,9 @@ export default function Pedido() {
       <div className="card">
         <h2>
           {editando ? `🧾 Pedido #${editando.numero}` : "🧾 Pedido"}
-          {(mesa || cliente || paraLlevar) && (
+          {(mesa || clienteSel || paraLlevar) && (
             <span className="count">
-              {[mesa && `Mesa ${mesa}`, cliente, paraLlevar && "Para llevar"]
+              {[mesa && `Mesa ${mesa}`, clienteSel?.nombre, paraLlevar && "Para llevar"]
                 .filter(Boolean)
                 .join(" · ")}
             </span>
@@ -737,6 +781,39 @@ export default function Pedido() {
                 </div>
               </div>
             ))}
+
+            {desechables && (
+              <div className="linea auto">
+                <div className="l-top">
+                  <div className="l-desc">
+                    🥡 DESECHABLES
+                    <span className="muted" style={{ display: "block", fontSize: 12, fontWeight: 400 }}>
+                      {desechables.cant} empaque{desechables.cant === 1 ? "" : "s"}, calculado según
+                      lo que lleva el pedido
+                    </span>
+                  </div>
+                </div>
+
+                <div className="l-ctrl">
+                  <span className="l-unit">×{desechables.cant}</span>
+                  {desechables.fijo ? (
+                    <span className="l-unit">{money(desechables.precioUnit)} c/u</span>
+                  ) : (
+                    <input
+                      className="l-input"
+                      type="number"
+                      inputMode="numeric"
+                      value={desechables.precioUnit || ""}
+                      placeholder="$"
+                      onChange={(e) => setDesechUnit(Number(e.target.value) || 0)}
+                    />
+                  )}
+                  <span className="l-total">
+                    {money(desechables.cant * desechables.precioUnit)}
+                  </span>
+                </div>
+              </div>
+            )}
 
             <div className="l-final">
               <span>Total</span>

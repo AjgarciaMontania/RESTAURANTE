@@ -37,6 +37,13 @@ export const PRECIOS_DEF = {
   soloCaldoFijo: true,
   soloSeco: 8000,
   soloSecoFijo: true,
+  /**
+   * Empaque de "para llevar". Se cobra uno por recipiente: el almuerzo
+   * completo son dos (el caldo o la sopa aparte del seco) y lo individual uno.
+   */
+  cobrarDesechable: true,
+  desechable: 1000,
+  desechableFijo: true,
 };
 
 /**
@@ -178,6 +185,54 @@ export function armarLinea({
   };
 }
 
+export const TIPO_DESECHABLE = "desechable";
+
+/**
+ * Cuántos recipientes necesita cada renglón cuando el pedido va para llevar.
+ *
+ * El almuerzo va en dos: el caldo o la sopa no se puede echar encima del seco.
+ * Los huevos y el principio viajan dentro del mismo plato, así que no suman.
+ * Las meriendas y los adicionales van en bolsa y no cobran empaque.
+ */
+export const EMPAQUES = {
+  almuerzo_normal: 2,
+  almuerzo_especial: 2,
+  solo_caldo: 1,
+  solo_sopa: 1,
+  solo_seco: 1,
+  especial: 1,
+  huevo: 0,
+  adicional: 0,
+  merienda: 0,
+  desechable: 0,
+};
+
+export const empaquesDe = (i) => (EMPAQUES[i?.tipo] ?? 0) * (Number(i?.cant) || 0);
+
+export const empaquesPedido = (items = []) => items.reduce((s, i) => s + empaquesDe(i), 0);
+
+/**
+ * El renglón de desechables del pedido, o null si no aplica.
+ *
+ * Va como una línea más para que quede el registro de cuánto entró por
+ * empaques, y para que el cliente vea por qué paga de más.
+ */
+export function lineaDesechables(items, paraLlevar, precios) {
+  const p = { ...PRECIOS_DEF, ...precios };
+  if (!paraLlevar || !p.cobrarDesechable) return null;
+
+  const cant = empaquesPedido(items);
+  if (cant <= 0) return null;
+
+  return {
+    tipo: TIPO_DESECHABLE,
+    descripcion: "DESECHABLES",
+    cant,
+    precioUnit: Number(p.desechable) || 0,
+    fijo: !!p.desechableFijo,
+  };
+}
+
 /** Etiquetas legibles por tipo de línea, usadas en el cierre de caja */
 export const ETIQUETA_TIPO = {
   almuerzo_normal: "Almuerzos normales",
@@ -189,6 +244,7 @@ export const ETIQUETA_TIPO = {
   especial: "Especiales",
   huevo: "Huevos",
   merienda: "Meriendas",
+  desechable: "Desechables",
 };
 
 /** ¿La línea cuenta como almuerzo vendido? */
@@ -226,3 +282,51 @@ export function quedoDebiendo(p) {
 
 export const totalLineas = (items) =>
   items.reduce((s, i) => s + i.cant * i.precioUnit, 0);
+
+/**
+ * Categorías que no se abren por producto: su etiqueta ya lo dice todo.
+ * "Almuerzos normales ×20" se entiende; "Meriendas $54.000" no.
+ */
+const SIN_DETALLE = new Set(["almuerzo_normal", "almuerzo_especial", "desechable"]);
+
+/**
+ * Lo vendido en el día, agrupado por categoría y detallado por producto.
+ *
+ * @param {object[]} pedidos  Pedidos ya filtrados (sin anulados)
+ * @returns {{tipo,etiqueta,cant,total,filas:{desc,cant,total}[]}[]}
+ */
+export function resumenProductos(pedidos = []) {
+  const cats = new Map();
+
+  for (const p of pedidos) {
+    for (const i of p.items || []) {
+      const t = i.tipo || "otro";
+      if (!cats.has(t))
+        cats.set(t, {
+          tipo: t,
+          etiqueta: ETIQUETA_TIPO[t] || "Otros",
+          cant: 0,
+          total: 0,
+          filas: new Map(),
+        });
+
+      const c = cats.get(t);
+      const cant = Number(i.cant) || 0;
+      const valor = cant * (Number(i.precioUnit) || 0);
+      c.cant += cant;
+      c.total += valor;
+
+      if (SIN_DETALLE.has(t)) continue;
+
+      const clave = (i.descripcion || "Sin nombre").trim();
+      const fila = c.filas.get(clave) || { desc: clave, cant: 0, total: 0 };
+      fila.cant += cant;
+      fila.total += valor;
+      c.filas.set(clave, fila);
+    }
+  }
+
+  return [...cats.values()]
+    .map((c) => ({ ...c, filas: [...c.filas.values()].sort((a, b) => b.total - a.total) }))
+    .sort((a, b) => b.total - a.total);
+}

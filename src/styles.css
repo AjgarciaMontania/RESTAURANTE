@@ -774,3 +774,12 @@ textarea {
   .plato-cuerpo h2 { font-size: 1.7em; }
   .plato-precio { font-size: 1.8em; }
 }
+
+/* Renglón que calcula la app sola: el empaque de "para llevar" */
+.linea.auto { background: #fbf3e0; border-color: #ecd9ac; }
+.linea.auto .l-desc { color: #5c4413; }
+
+/* Desglose de caja: la categoría manda, el producto va indentado */
+.tal.desglose tr.grupo td { font-weight: 800; color: var(--verde); padding-top: 12px; }
+.tal.desglose tr.detalle td { color: var(--muted); font-size: 13px; }
+.tal.desglose tr.detalle td:first-child { padding-left: 16px; }

@@ -41,6 +41,7 @@ export default function Fiados() {
   const [abierto, setAbierto] = useState(null); // cliente desplegado
   const [abono, setAbono] = useState("");
   const [nuevo, setNuevo] = useState(null); // alta de cliente
+  const [editando, setEditando] = useState(null); // ficha del cliente en edición
   const [form, setForm] = useState(null); // { modo: 'consumo' | 'saldo', ...FORM_VACIO }
 
   useEffect(() => {
@@ -134,6 +135,49 @@ export default function Fiados() {
       creado: serverTimestamp(),
     });
     setNuevo(null);
+  };
+
+  /** Guarda los cambios de la ficha del cliente. */
+  const guardarCliente = async () => {
+    const n = (editando?.nombre || "").trim();
+    if (!n) return alert("El nombre no puede quedar vacío.");
+    await updateDoc(doc(db, "clientes", editando.id), {
+      nombre: n,
+      telefono: (editando.telefono || "").trim(),
+      cedula: (editando.cedula || "").trim(),
+    });
+    setEditando(null);
+  };
+
+  /**
+   * Elimina un cliente, pero solo si no debe nada.
+   *
+   * Con saldo pendiente no se deja: borrarlo sería perder la deuda de un toque
+   * mal dado, y la plata no se recupera de la papelera.
+   */
+  const borrarCliente = async (c) => {
+    if (c.saldo > 0)
+      return alert(
+        `${c.nombre} todavía debe ${money(c.saldo)}.\n\n` +
+          "Registra el abono o elimina los movimientos antes de borrarlo."
+      );
+    if (
+      !confirm(
+        `¿Eliminar a ${c.nombre}?\n\n` +
+          `Se borra el cliente y sus ${c.movs.length} movimiento(s). No se puede deshacer.`
+      )
+    )
+      return;
+
+    try {
+      await Promise.all(c.movs.map((m) => deleteDoc(doc(db, "fiados", m.id))));
+      await deleteDoc(doc(db, "clientes", c.id));
+      setAbierto(null);
+      setEditando(null);
+    } catch (e) {
+      console.error(e);
+      alert("No se pudo eliminar. Revisa las reglas de Firestore.");
+    }
   };
 
   const registrarAbono = async (c) => {
@@ -528,6 +572,66 @@ export default function Fiados() {
                   >
                     💬 Enviar estado de cuenta completo
                   </button>
+
+                  {editando?.id === c.id ? (
+                    <div className="cobro" style={{ marginTop: 12 }}>
+                      <div style={{ fontWeight: 700, marginBottom: 10 }}>✎ Ficha del cliente</div>
+                      <input
+                        type="text"
+                        placeholder="Nombre completo"
+                        value={editando.nombre}
+                        onChange={(e) => setEditando({ ...editando, nombre: e.target.value })}
+                        style={{ marginBottom: 8 }}
+                      />
+                      <input
+                        type="tel"
+                        inputMode="numeric"
+                        placeholder="Celular (ej: 3001234567)"
+                        value={editando.telefono}
+                        onChange={(e) => setEditando({ ...editando, telefono: e.target.value })}
+                        style={{ marginBottom: 8 }}
+                      />
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="Cédula (opcional)"
+                        value={editando.cedula}
+                        onChange={(e) => setEditando({ ...editando, cedula: e.target.value })}
+                        style={{ marginBottom: 10 }}
+                      />
+                      <div className="acciones">
+                        <button className="btn primary chico" onClick={guardarCliente}>
+                          Guardar
+                        </button>
+                        <button className="btn chico" onClick={() => setEditando(null)}>
+                          Cancelar
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="acciones" style={{ marginTop: 10 }}>
+                      <button
+                        className="btn chico"
+                        onClick={() =>
+                          setEditando({
+                            id: c.id,
+                            nombre: c.nombre || "",
+                            telefono: c.telefono || "",
+                            cedula: c.cedula || "",
+                          })
+                        }
+                      >
+                        ✎ Editar ficha
+                      </button>
+                      <button
+                        className="btn chico del"
+                        title={c.saldo > 0 ? "No se puede: todavía debe" : "Eliminar cliente"}
+                        onClick={() => borrarCliente(c)}
+                      >
+                        🗑 Eliminar cliente
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

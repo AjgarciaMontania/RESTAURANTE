@@ -27,6 +27,12 @@ const OPCIONES = [
     no: "Apagado: nunca se marca ni se muestra en el TV.",
   },
   {
+    key: "cobrarDesechable",
+    label: "Cobrar el desechable",
+    si: "Un pedido para llevar suma el empaque: dos por almuerzo completo, uno por plato individual.",
+    no: "Apagado: el empaque va por cuenta de la casa.",
+  },
+  {
     key: "usarFiados",
     label: "Fiados",
     si: "Se puede dejar un pedido debiendo y se lleva la cuenta del cliente.",
@@ -55,6 +61,11 @@ const CAMPOS = [
   { key: "almuerzoEspecial", label: "Almuerzo especial", ayuda: "Cuando el pedido se marca como Especial" },
   { key: "soloCaldo", label: "Solo caldo o sopa", ayuda: "Cuando piden el líquido sin proteína" },
   { key: "soloSeco", label: "Solo seco", ayuda: "Cuando piden únicamente la proteína" },
+  {
+    key: "desechable",
+    label: "Desechable (para llevar)",
+    ayuda: "Valor de cada empaque: el almuerzo completo lleva dos, lo individual uno",
+  },
 ];
 
 export default function Ajustes() {

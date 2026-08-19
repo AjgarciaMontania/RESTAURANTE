@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { collection, doc, onSnapshot, query, updateDoc, where } from "firebase/firestore";
 import { db, hoy, horaColombia, recordar, ZONA } from "../firebase";
+import { TIPO_DESECHABLE } from "../lib/negocio";
 import { useVersionCorta } from "../lib/version.js";
 
 /** Minutos a partir de los cuales la comanda se marca como atrasada. */
@@ -197,7 +198,9 @@ export default function Cocina() {
             ]
               .filter(Boolean)
               .join(" ");
-            const piezas = (p.items || []).reduce((s, i) => s + i.cant, 0);
+            // El empaque se cobra, pero no se cocina: no sale en la comanda.
+            const platos = (p.items || []).filter((i) => i.tipo !== TIPO_DESECHABLE);
+            const piezas = platos.reduce((s, i) => s + i.cant, 0);
 
             return (
               <article className={clases} key={p.id}>
@@ -220,7 +223,7 @@ export default function Cocina() {
                 )}
 
                 <ul className="ticket-items">
-                  {(p.items || []).map((i, k) => {
+                  {platos.map((i, k) => {
                     const extra = EXTRAS[i.tipo];
                     // El principio y los huevos salen en su propio renglón
                     const rotulos = [
