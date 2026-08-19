@@ -678,3 +678,99 @@ textarea {
 .card.plegable > .plegar > h2 { margin-bottom: 0; }
 .card.plegable > .plegar + * { margin-top: 14px; }
 .plegar .flecha { color: var(--muted); font-size: 13px; margin-left: 2px; }
+
+/* =========================================================
+   Carta: los platos de hoy con foto
+   ========================================================= */
+
+/* ---- Editor, dentro de la pestaña Menú ---- */
+.seg.tres button { font-size: 14px; padding: 0 4px; }
+
+.foto-campo {
+  display: flex; gap: 12px; align-items: flex-start;
+  border: 1px solid var(--line); border-radius: 10px;
+  padding: 10px; margin-bottom: 10px; background: var(--surface-2);
+}
+.foto-marco {
+  width: 92px; height: 92px; flex: none; position: relative; cursor: pointer;
+  border-radius: 9px; overflow: hidden; background: #fff;
+  border: 1px dashed var(--line-fuerte);
+}
+.foto-marco img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.foto-vacia { display: grid; place-items: center; height: 100%; font-size: 26px; color: var(--muted); }
+.foto-cargando {
+  position: absolute; inset: 0; display: grid; place-items: center;
+  background: rgba(255, 255, 255, .8); font-size: 12px; font-weight: 700; color: var(--verde);
+}
+.foto-datos { display: flex; flex-direction: column; gap: 2px; font-size: 13px; min-width: 0; }
+
+.previa-carta {
+  display: flex; align-items: center; gap: 10px; margin-top: 14px;
+  padding: 10px 12px; border-radius: 10px; background: var(--verde-suave);
+}
+.previa-carta .plata { margin-left: auto; color: var(--verde); font-weight: 800; }
+
+.card.plato-fila { display: flex; gap: 12px; align-items: flex-start; }
+.plato-minis { display: flex; gap: 6px; flex: none; }
+.mini {
+  width: 62px; height: 62px; border-radius: 9px; object-fit: cover; display: block;
+  background: var(--surface-2); border: 1px solid var(--line);
+}
+.mini.vacia { display: grid; place-items: center; font-size: 20px; color: var(--muted); }
+.plato-texto { display: flex; flex-direction: column; gap: 2px; font-size: 13px; min-width: 0; flex: 1; }
+.plato-texto > b { font-size: 15px; }
+.plato-texto .plata { color: var(--verde); font-weight: 800; font-size: 15px; margin-top: 2px; }
+.plato-acciones { display: flex; flex-direction: column; gap: 6px; flex: none; }
+.plato-acciones .btn.icon { min-width: 40px; min-height: 40px; padding: 0 8px; }
+
+/* ---- La pantalla del comedor ---- */
+/* La carta reparte el alto sobrante arriba y abajo, para que no queden los
+   platos apretados contra la cabecera con medio TV en verde. */
+.tv.carta { display: flex; flex-direction: column; }
+.carta-grid {
+  display: grid; gap: 1.1em;
+  grid-template-columns: repeat(auto-fill, minmax(17em, 1fr));
+  align-items: stretch;
+  margin: auto 0;
+}
+.plato {
+  background: #fbf7ee; border-radius: .7em; overflow: hidden;
+  box-shadow: 0 .6em 1.6em rgba(0, 0, 0, .3);
+  display: flex; flex-direction: column;
+}
+.plato-foto { position: relative; aspect-ratio: 5 / 4; background: #14382c; }
+.plato-foto > img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.plato-sinfoto { display: grid; place-items: center; height: 100%; }
+.plato-sinfoto svg { width: 4.5em; height: 4.5em; opacity: .6; }
+.plato-foto2 {
+  position: absolute; right: .55em; bottom: .55em;
+  width: 30%; aspect-ratio: 1; border-radius: 50%; overflow: hidden;
+  border: .18em solid #fbf7ee; box-shadow: 0 .25em .7em rgba(0, 0, 0, .38);
+  background: #14382c;
+}
+.plato-foto2 img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.plato-foto2 .plato-sinfoto svg { width: 2em; height: 2em; }
+
+.plato-cuerpo { padding: .75em .9em .9em; display: flex; flex-direction: column; flex: 1; }
+.plato-cuerpo h2 {
+  margin: 0 0 .3em; font-family: var(--serif); font-weight: 400;
+  font-size: 1.55em; line-height: 1.15; color: #1f5c45; letter-spacing: .01em;
+  overflow-wrap: anywhere;
+}
+.plato-cuerpo ul { margin: 0; padding: 0; list-style: none; display: grid; gap: .2em; }
+.plato-cuerpo li { font-size: 1em; font-weight: 600; color: #4c4034; overflow-wrap: anywhere; }
+.plato-nota {
+  margin: .45em 0 0; font-family: var(--serif); font-style: italic;
+  font-size: .95em; color: #8b7d6b;
+}
+.plato-precio {
+  margin-top: auto; padding-top: .55em;
+  font-size: 1.65em; font-weight: 800; color: #b98b2e;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 720px) {
+  .carta-grid { grid-template-columns: 1fr; gap: .8em; }
+  .plato-cuerpo h2 { font-size: 1.7em; }
+  .plato-precio { font-size: 1.8em; }
+}

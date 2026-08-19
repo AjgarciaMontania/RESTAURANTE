@@ -2,6 +2,7 @@ import { HashRouter, Routes, Route, NavLink, useLocation } from "react-router-do
 import Menu from "./pages/Menu.jsx";
 import Pedido from "./pages/Pedido.jsx";
 import Cocina from "./pages/Cocina.jsx";
+import CartaTV from "./pages/CartaTV.jsx";
 import Fiados from "./pages/Fiados.jsx";
 import Caja from "./pages/Caja.jsx";
 import Ajustes from "./pages/Ajustes.jsx";
@@ -26,7 +27,7 @@ function Shell() {
   useBotonAtras();
 
   // La vista de TV va a pantalla completa, sin barras
-  const kiosco = pathname.startsWith("/cocina");
+  const kiosco = pathname.startsWith("/cocina") || pathname.startsWith("/carta");
 
   if (kiosco) {
     return (
@@ -36,6 +37,14 @@ function Shell() {
           element={
             <SoloAdmin titulo="Pantalla de cocina" permanente pantalla>
               <Cocina />
+            </SoloAdmin>
+          }
+        />
+        <Route
+          path="/carta"
+          element={
+            <SoloAdmin titulo="Pantalla de la carta" permanente pantalla>
+              <CartaTV />
             </SoloAdmin>
           }
         />

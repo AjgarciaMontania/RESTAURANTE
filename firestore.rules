@@ -39,6 +39,19 @@ service cloud.firestore {
       allow read, write: if appIniciada();
     }
 
+    // Carta del día: los platos con foto que ve el cliente en el TV.
+    // Se pueden borrar porque un plato se quita de la carta cuando se acaba.
+    match /platos/{plato} {
+      allow read, create, update, delete: if appIniciada();
+    }
+
+    // Las fotos de esos platos, ya comprimidas por la app.
+    // Van en su propio documento: el tope de 1 MB de Firestore es por documento,
+    // así que una foto pesada nunca daña el resto de la carta.
+    match /fotos/{foto} {
+      allow read, create, update, delete: if appIniciada();
+    }
+
     // Clientes que fían y sus movimientos de cuenta
     match /clientes/{cliente} {
       allow read, write: if appIniciada();

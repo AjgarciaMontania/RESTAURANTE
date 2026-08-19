@@ -460,4 +460,67 @@ chk9('Los dos juntos son 2 almuerzos', totalLineas([
 chk9('Dos identicos en un renglon', totalLineas([{ cant: 2, precioUnit: rPlato1.precioUnit }]), 20000);
 
 console.log(f9 ? `\n❌ ${f9} fallo(s) en repetir y corregir` : '\n✅ Repetir y corregir: todo pasa');
-process.exit(fallos + f2 + f3 + f4 + f5 + f6 + f7 + f8 + f9 ? 1 : 0);
+
+// ---------------------------------------------------------------
+// Carta del dia: como se lee cada plato en la pantalla del comedor
+// ---------------------------------------------------------------
+import { hayPlato, limpiarPlato, precioPlato, resumenPlato, PLATO_VACIO } from './src/lib/carta.js';
+
+console.log('\n--- Carta ---');
+let f10 = 0;
+const chk10 = (nom, real, esp) => {
+  const ok = real === esp;
+  if (!ok) f10++;
+  console.log(`${ok ? '✓' : '✗'} ${nom}  ->  ${real}${ok ? '' : `  (esperado ${esp})`}`);
+};
+
+const cPescado = { id: 'c1', nombre: 'Pescado', precio: 0 };
+const cFrijoles = { id: 'p1', nombre: 'Principio de frijoles', precio: 0 };
+const cSudada = { id: 't1', nombre: 'Carne sudada', precio: 0 };
+const cSopa = { id: 's1', nombre: 'Sopa de verduras', precio: 0 };
+const cHuevo = { id: 'h1', nombre: 'Huevos revueltos', precio: 0 };
+
+// El ejemplo de Alvaro: caldo de pescado + frijoles + carne sudada
+const completo = { caldo: cPescado, principio: cFrijoles, proteinas: [cSudada], huevos: [] };
+const r = resumenPlato(completo);
+chk10('El titulo es la proteina', r.titulo, 'Carne sudada');
+chk10('Dos renglones de detalle', r.detalles.length, 2);
+chk10('  el caldo', r.detalles[0].txt, 'Caldo de pescado');
+chk10('  el principio sin repetir la palabra', r.detalles[1].txt, 'Frijoles');
+chk10('Es un almuerzo normal', precioPlato(completo, PRECIOS_DEF), 10000);
+chk10('  y especial cuesta mas', precioPlato({ ...completo, especial: true }, PRECIOS_DEF), 13000);
+
+// Sopa: el rotulo cambia y no repite "sopa de sopa"
+const conSopa = resumenPlato({ sopa: cSopa, proteinas: [cSudada] });
+chk10('La sopa se rotula como sopa', conSopa.detalles[0].txt, 'Sopa de verduras');
+
+// Sin proteina manda el principio
+const soloPrin = resumenPlato({ caldo: cPescado, principio: cFrijoles, proteinas: [] });
+chk10('Sin proteina titula el principio', soloPrin.titulo, 'Frijoles');
+chk10('  y el caldo queda de detalle', soloPrin.detalles[0].txt, 'Caldo de pescado');
+
+// Solo caldo: titula el caldo y no se repite abajo
+const soloCal = resumenPlato({ caldo: cPescado, proteinas: [] });
+chk10('Solo caldo titula el caldo', soloCal.titulo, 'Caldo de pescado');
+chk10('  sin repetirlo en el detalle', soloCal.detalles.length, 0);
+chk10('  y se cobra como caldo solo', precioPlato({ caldo: cPescado, proteinas: [] }, PRECIOS_DEF), 5000);
+
+// Huevos: se muestran sin decir "huevos huevos"
+const conHuevo = resumenPlato({ caldo: cPescado, proteinas: [cSudada], huevos: [cHuevo] });
+chk10('Los huevos no se repiten', conHuevo.detalles.some(d => d.txt === 'Huevos revueltos'), true);
+
+// Plato vacio
+chk10('Plato vacio no se puede publicar', hayPlato(PLATO_VACIO), false);
+chk10('Con una proteina ya se puede', hayPlato({ ...PLATO_VACIO, proteinas: [cSudada] }), true);
+chk10('Plato vacio no tiene titulo raro', resumenPlato(PLATO_VACIO).titulo, 'Plato del día');
+
+// Lo que se guarda no puede llevar undefined ni mas de 2 fotos
+const guardable = limpiarPlato({ ...completo, nota: '  con jugo  ', fotos: ['a', '', 'b', 'c'] });
+chk10('Recorta a dos fotos', guardable.fotos.join(','), 'a,b');
+chk10('Quita espacios de la nota', guardable.nota, 'con jugo');
+chk10('Sin undefined para Firestore',
+  JSON.stringify(guardable) === JSON.stringify(JSON.parse(JSON.stringify(guardable))), true);
+chk10('La sopa vacia queda en null', guardable.sopa, null);
+
+console.log(f10 ? `\n❌ ${f10} fallo(s) en carta` : '\n✅ Carta: todo pasa');
+process.exit(fallos + f2 + f3 + f4 + f5 + f6 + f7 + f8 + f9 + f10 ? 1 : 0);

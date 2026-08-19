@@ -78,12 +78,12 @@ export const receta = ({ caldo, sopa, principio, proteinas = [], huevos = [], es
  */
 const sinPrefijo = (n, re) => n.trim().replace(re, "").trim() || n.trim();
 
-const soloPreparacion = (n) =>
+export const soloPreparacion = (n) =>
   sinPrefijo(n, /^huevos?\s+(al\s+|a\s+la\s+|de\s+|con\s+)?/i);
 
-const soloSabor = (n) => sinPrefijo(n, /^(sopa|caldo|consom[eé])\s*(de\s+)?/i);
+export const soloSabor = (n) => sinPrefijo(n, /^(sopa|caldo|consom[eé])\s*(de\s+)?/i);
 
-const soloPrincipio = (n) => sinPrefijo(n, /^principio\s*(de\s+)?/i);
+export const soloPrincipio = (n) => sinPrefijo(n, /^principio\s*(de\s+)?/i);
 
 /**
  * Construye la línea del talonario a partir de lo seleccionado del menú.
