@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   addDoc,
   collection,
@@ -20,6 +20,7 @@ import {
   PLATO_VACIO,
   ROTULOS_FOTO,
   esEspecial,
+  fotosSugeridas,
   hayPlato,
   limpiarPlato,
   precioPlato,
@@ -81,19 +82,56 @@ export default function Carta() {
   const { menu } = useMemo(() => menuDelDia(fijo, diario), [fijo, diario]);
   const grupos = useMemo(() => separarPlatos(platos), [platos]);
 
+  /**
+   * Qué foto puso el catálogo en cada casilla.
+   *
+   * Sirve para distinguir la foto que llegó sola de la que el dueño escogió a
+   * mano: la automática se reemplaza al cambiar el plato, la suya se respeta.
+   */
+  const fotoDelMenu = useRef(["", ""]);
+
   const avisar = (t) => {
     setToast(t);
     setTimeout(() => setToast(""), 2000);
   };
 
-  const cambiar = (parche) => setBorrador((b) => ({ ...b, ...parche }));
+  /**
+   * Cambia el plato y trae las fotos del menú fijo.
+   *
+   * La foto se subió una sola vez, pegada a la fila del catálogo: aquí solo
+   * aparece. Si el dueño puso otra a mano en esa casilla, no se le toca.
+   */
+  const cambiar = (parche) =>
+    setBorrador((b) => {
+      const siguiente = { ...b, ...parche };
+      const sugeridas = fotosSugeridas(siguiente);
+      const fotos = [...(siguiente.fotos || [])];
 
+      for (let i = 0; i < MAX_FOTOS; i++) {
+        const puesta = fotos[i] || "";
+        if (puesta && puesta !== fotoDelMenu.current[i]) continue; // la eligió él
+        fotos[i] = sugeridas[i] || "";
+        fotoDelMenu.current[i] = sugeridas[i] || "";
+      }
+
+      return { ...siguiente, fotos };
+    });
+
+  /** Foto puesta a mano: manda sobre la del menú. */
   const ponerFoto = (i, idFoto) =>
     setBorrador((b) => {
+      fotoDelMenu.current[i] = "";
       const fotos = [...(b.fotos || [])];
       fotos[i] = idFoto;
       return { ...b, fotos };
     });
+
+  /** Abre el armador en limpio, o con un plato ya guardado. */
+  const abrirBorrador = (p) => {
+    // Lo guardado cuenta como escogido a mano: no se pisa solo.
+    fotoDelMenu.current = ["", ""];
+    setBorrador(p);
+  };
 
   const guardar = async () => {
     if (!hayPlato(borrador) || guardando) return;
@@ -186,12 +224,13 @@ export default function Carta() {
         </h2>
         <p className="muted" style={{ margin: "0 0 12px", fontSize: 13 }}>
           Arma el plato como en el talonario, súbele la foto y sale en la pantalla del
-          comedor. El precio lo pone solo, con las mismas reglas de cobro. Las fotos
-          quedan guardadas: con <b>🖼 Ya la tengo</b> vuelves a usar una sin repetirla.
+          comedor. El precio lo pone solo, con las mismas reglas de cobro. La foto
+          también: se sube una vez en <b>Menú fijo</b> y de ahí en adelante aparece sola
+          cada vez que armes ese plato.
         </p>
         <div className="acciones">
           {!borrador && (
-            <button className="btn primary chico" onClick={() => setBorrador({ ...PLATO_VACIO })}>
+            <button className="btn primary chico" onClick={() => abrirBorrador({ ...PLATO_VACIO })}>
               ➕ Armar plato
             </button>
           )}
@@ -236,15 +275,20 @@ export default function Carta() {
             style={{ marginBottom: 14 }}
           />
 
-          {Array.from({ length: MAX_FOTOS }).map((_, i) => (
-            <CampoFoto
-              key={i}
-              id={(borrador.fotos || [])[i] || ""}
-              titulo={ROTULOS_FOTO[i].titulo}
-              pista={ROTULOS_FOTO[i].pista}
-              onCambio={(idFoto) => ponerFoto(i, idFoto)}
-            />
-          ))}
+          {Array.from({ length: MAX_FOTOS }).map((_, i) => {
+            const puesta = (borrador.fotos || [])[i] || "";
+            const delMenu = !!puesta && puesta === fotoDelMenu.current[i];
+
+            return (
+              <CampoFoto
+                key={i}
+                id={puesta}
+                titulo={ROTULOS_FOTO[i].titulo}
+                pista={delMenu ? "✓ Viene del Menú fijo" : ROTULOS_FOTO[i].pista}
+                onCambio={(idFoto) => ponerFoto(i, idFoto)}
+              />
+            );
+          })}
 
           {hayPlato(borrador) && (
             <div className={"previa-carta" + (esEspecial(borrador) ? " especial" : "")}>
@@ -315,7 +359,7 @@ export default function Carta() {
                       className="btn icon"
                       aria-label="Editar plato"
                       onClick={() => {
-                        setBorrador({ ...PLATO_VACIO, ...p });
+                        abrirBorrador({ ...PLATO_VACIO, ...p });
                         window.scrollTo({ top: 0, behavior: "smooth" });
                       }}
                     >

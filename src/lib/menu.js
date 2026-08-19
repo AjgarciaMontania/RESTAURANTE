@@ -5,13 +5,20 @@
  * esté escrito en el catálogo se ofrece todos los días sin tener que marcarlo.
  */
 export const SECCIONES = [
-  { key: "caldos", titulo: "Caldos", icono: "🍲", ph: "Ej: Pescado", nota: "desayuno" },
-  { key: "sopas", titulo: "Sopas", icono: "🥣", ph: "Ej: Verduras", nota: "almuerzo" },
+  { key: "caldos", titulo: "Caldos", icono: "🍲", ph: "Ej: Pescado", nota: "desayuno", conFoto: true },
+  { key: "sopas", titulo: "Sopas", icono: "🥣", ph: "Ej: Verduras", nota: "almuerzo", conFoto: true },
   { key: "principios", titulo: "Principios", icono: "🫘", ph: "Ej: Frijoles", nota: "va incluido" },
-  { key: "proteinas", titulo: "Proteínas", icono: "🍗", ph: "Ej: Pechuga" },
+  { key: "proteinas", titulo: "Proteínas", icono: "🍗", ph: "Ej: Pechuga", conFoto: true },
   { key: "huevos", titulo: "Huevos", icono: "🍳", ph: "Ej: Revueltos" },
   { key: "adicionales", titulo: "Adicional", icono: "➕", ph: "Ej: Porción de arroz", conPrecio: true },
-  { key: "especiales", titulo: "Especiales", icono: "⭐", ph: "Ej: Bandeja paisa", conPrecio: true },
+  {
+    key: "especiales",
+    titulo: "Especiales",
+    icono: "⭐",
+    ph: "Ej: Bandeja paisa",
+    conPrecio: true,
+    conFoto: true,
+  },
   {
     key: "meriendas",
     titulo: "Meriendas",

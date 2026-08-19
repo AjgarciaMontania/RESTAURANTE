@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { doc, getDoc, onSnapshot, setDoc } from "firebase/firestore";
 import { db, hoy } from "../firebase";
 import { MENU_ID, MENU_VACIO, SECCIONES, menuVacio } from "../lib/menu";
+import CampoFoto from "../components/CampoFoto.jsx";
+import MiniFoto from "../components/MiniFoto.jsx";
 
 const uid = () => Math.random().toString(36).slice(2, 9);
 
@@ -10,6 +12,8 @@ export default function MenuFijo() {
   const [menu, setMenu] = useState(MENU_VACIO);
   const [cargando, setCargando] = useState(true);
   const [toast, setToast] = useState("");
+  /** Fila cuyo panel de foto está abierto: "proteinas:ab12". */
+  const [fotoAbierta, setFotoAbierta] = useState("");
 
   useEffect(() => {
     const t = setTimeout(() => setCargando(false), 5000);
@@ -82,6 +86,11 @@ export default function MenuFijo() {
           precio de cada fila es opcional y solo manda cuando el plato va solo.
         </p>
         <p className="muted" style={{ margin: "8px 0 0", fontSize: 13 }}>
+          El botón 📷 de cada fila guarda la <b>foto para la carta del comedor</b>. Se
+          sube una sola vez: cuando armes el plato en <b>Carta</b>, la foto ya viene
+          puesta sola.
+        </p>
+        <p className="muted" style={{ margin: "8px 0 0", fontSize: 13 }}>
           Las <b>meriendas</b> son la excepción: llevan su propio precio, se cobran
           siempre aparte y salen todos los días en el talonario sin tener que marcarlas
           en <b>Menú de hoy</b>.
@@ -106,33 +115,60 @@ export default function MenuFijo() {
 
             {menu[s.key].length === 0 && <p className="empty">Sin filas todavía</p>}
 
-            {menu[s.key].map((fila) => (
-              <div className="row" key={fila.id}>
-                <input
-                  type="text"
-                  value={fila.nombre}
-                  placeholder={s.ph}
-                  onChange={(e) => editar(s.key, fila.id, "nombre", e.target.value)}
-                />
-                <input
-                  className="price-input"
-                  type="number"
-                  inputMode="numeric"
-                  value={fila.precio || ""}
-                  placeholder={s.conPrecio ? "$" : "$ opcional"}
-                  onChange={(e) =>
-                    editar(s.key, fila.id, "precio", Number(e.target.value) || 0)
-                  }
-                />
-                <button
-                  className="btn icon del"
-                  onClick={() => borrar(s.key, fila.id)}
-                  aria-label="Eliminar fila"
-                >
-                  ✕
-                </button>
-              </div>
-            ))}
+            {menu[s.key].map((fila) => {
+              const llave = s.key + ":" + fila.id;
+
+              return (
+                <div key={fila.id}>
+                  <div className="row">
+                    <input
+                      type="text"
+                      value={fila.nombre}
+                      placeholder={s.ph}
+                      onChange={(e) => editar(s.key, fila.id, "nombre", e.target.value)}
+                    />
+                    <input
+                      className="price-input"
+                      type="number"
+                      inputMode="numeric"
+                      value={fila.precio || ""}
+                      placeholder={s.conPrecio ? "$" : "$ opcional"}
+                      onChange={(e) =>
+                        editar(s.key, fila.id, "precio", Number(e.target.value) || 0)
+                      }
+                    />
+
+                    {s.conFoto && (
+                      <button
+                        className={"btn icon foto" + (fila.foto ? " puesta" : "")}
+                        title="Foto para la carta del comedor"
+                        aria-label="Foto del plato"
+                        onClick={() => setFotoAbierta(fotoAbierta === llave ? "" : llave)}
+                      >
+                        {fila.foto ? <MiniFoto id={fila.foto} className="mini-fila" /> : "📷"}
+                      </button>
+                    )}
+
+                    <button
+                      className="btn icon del"
+                      onClick={() => borrar(s.key, fila.id)}
+                      aria-label="Eliminar fila"
+                    >
+                      ✕
+                    </button>
+                  </div>
+
+                  {s.conFoto && fotoAbierta === llave && (
+                    <CampoFoto
+                      id={fila.foto || ""}
+                      titulo={fila.nombre || "Foto para la carta"}
+                      pista="Se sube una vez y sale sola en la carta del comedor"
+                      onCambio={(idFoto) => editar(s.key, fila.id, "foto", idFoto)}
+                    />
+                  )}
+                </div>
+              );
+            })}
 
             <button className="btn block ghost" onClick={() => agregar(s.key)}>
               + Agregar fila

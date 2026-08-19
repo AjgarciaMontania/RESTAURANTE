@@ -121,6 +121,8 @@ input, button, select, textarea { font: inherit; color: inherit; }
 /* ---------- Controles ---------- */
 .row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
 .row:last-child { margin-bottom: 0; }
+/* Sin esto los inputs no se dejan encoger y la fila se sale de la pantalla. */
+.row > input { min-width: 0; }
 
 input[type="text"], input[type="number"], input[type="date"], textarea, select {
   width: 100%; min-height: var(--tap);
@@ -138,6 +140,8 @@ input:focus, textarea:focus, select:focus {
 input::placeholder { color: #b3a794; }
 
 .price-input { max-width: 132px; text-align: right; }
+/* En un celular angosto el precio cede espacio para que el nombre se lea. */
+@media (max-width: 460px) { .price-input { max-width: 96px; } }
 
 .btn {
   min-height: var(--tap); padding: 10px 16px;
@@ -848,3 +852,11 @@ textarea {
 }
 .galeria-foto img { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; }
 .galeria-foto.on { border-color: var(--verde); }
+
+/* Botón de foto dentro de una fila del menú fijo */
+.btn.icon.foto {
+  overflow: hidden; padding: 0;
+  width: 44px; min-width: 44px; max-width: 44px; height: 44px; min-height: 44px;
+}
+.btn.icon.foto.puesta { border-color: var(--verde); }
+.mini-fila { width: 100%; height: 100%; object-fit: cover; display: block; }

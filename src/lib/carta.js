@@ -126,6 +126,25 @@ export function resumenPlato(p) {
 }
 
 /**
+ * Las fotos que le corresponden al plato según el catálogo.
+ *
+ * La foto se sube una sola vez en el Menú fijo, pegada a la fila: la bandeja
+ * paisa lleva la suya, la carne sudada la suya y el caldo de pescado la suya.
+ * Aquí solo se resuelven, para que armar la carta no vuelva a pedir fotos.
+ *
+ *   Foto 1 -> el plato de la casa, o el seco (la primera proteína con foto)
+ *   Foto 2 -> el caldo o la sopa
+ *
+ * @returns {[string, string]} ids de foto, "" donde no haya
+ */
+export function fotosSugeridas(sel) {
+  const principal =
+    sel?.deLaCasa?.foto || (sel?.proteinas || []).find((x) => x?.foto)?.foto || "";
+  const liquido = sel?.caldo || sel?.sopa || null;
+  return [principal, liquido?.foto || ""];
+}
+
+/**
  * Precio del plato, con las mismas reglas de cobro del talonario.
  *
  * El plato de la casa manda con su propio precio; si en el menú quedó sin

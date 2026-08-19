@@ -546,6 +546,30 @@ chk10('Un corriente en el bloque del dia', partido.corriente.length, 1);
 chk10('Dos en el bloque de especiales', partido.especial.length, 2);
 chk10('Sin platos no rompe', separarPlatos().corriente.length, 0);
 
+
+// --- La foto se sube una vez en el menu fijo y sale sola en la carta ---
+import { fotosSugeridas } from './src/lib/carta.js';
+
+const protFoto = { id: 't1', nombre: 'Carne sudada', foto: 'fCarne' };
+const caldoFoto = { id: 'c1', nombre: 'Pescado', foto: 'fCaldo' };
+const bandejaFoto = { id: 'e1', nombre: 'Bandeja paisa', precio: 18000, foto: 'fBandeja' };
+
+const sug1 = fotosSugeridas({ caldo: caldoFoto, proteinas: [protFoto] });
+chk10('La foto 1 sale de la proteina', sug1[0], 'fCarne');
+chk10('La foto 2 sale del caldo', sug1[1], 'fCaldo');
+
+chk10('La sopa tambien pone la foto 2',
+  fotosSugeridas({ sopa: { id: 's1', nombre: 'Verduras', foto: 'fSopa' }, proteinas: [] })[1], 'fSopa');
+
+chk10('El plato de la casa manda en la foto 1',
+  fotosSugeridas({ deLaCasa: bandejaFoto, proteinas: [protFoto] })[0], 'fBandeja');
+
+chk10('Toma la primera proteina que tenga foto',
+  fotosSugeridas({ proteinas: [{ id: 'x', nombre: 'Sin foto' }, protFoto] })[0], 'fCarne');
+
+chk10('Sin fotos en el menu no inventa nada', fotosSugeridas(completo).join('|'), '|');
+chk10('Sin plato tampoco rompe', fotosSugeridas().join('|'), '|');
+
 console.log(f10 ? `\n❌ ${f10} fallo(s) en carta` : '\n✅ Carta: todo pasa');
 
 // ---------------------------------------------------------------
