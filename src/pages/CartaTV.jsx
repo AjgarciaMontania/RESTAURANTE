@@ -15,7 +15,15 @@ import { useVersionCorta } from "../lib/version.js";
 
 const CLAVE_ZOOM = "restaurante.cartaZoom";
 const BASE = 16;
-const MIN_ESCALA = 0.42;
+/**
+ * Hasta dónde se deja encoger la carta.
+ *
+ * Baja más que la de cocina porque acá los bloques van uno debajo del otro y
+ * un día muy cargado —muchos corrientes, especiales y la tanda de meriendas—
+ * necesita margen para caber. Es el caso extremo: con el menú de un día normal
+ * la carta ni se acerca a este tope.
+ */
+const MIN_ESCALA = 0.3;
 /**
  * A diferencia de la cocina, la carta también crece: es una cartelera para el
  * cliente y se ve pobre con tres platos chiquitos en un TV de 65".
@@ -23,14 +31,17 @@ const MIN_ESCALA = 0.42;
 const MAX_ESCALA = 3;
 const PASO = 0.05;
 
+/** Cuántas meriendas se muestran juntas en cada turno. */
+const POR_LOTE = 4;
+
 /**
- * Cuánto dura cada merienda en pantalla.
+ * Cuánto dura cada tanda de meriendas en pantalla.
  *
- * Van de a una y rotando: son muchas y pequeñas, y si salen todas juntas o
- * roban el ancho de los almuerzos, la carta pierde el orden. Tres segundos
- * alcanzan para leer el nombre y el precio sin cansar.
+ * Salen por lotes y rotando: si aparecieran todas juntas, el bloque crecería
+ * tanto que obligaría a encoger la carta entera. Diez segundos alcanzan para
+ * que el cliente lea las cuatro sin sentir que la pantalla lo apura.
  */
-const TURNO_MERIENDA = 3000;
+const TURNO_MERIENDA = 10000;
 
 
 /**
@@ -47,7 +58,7 @@ export default function CartaTV() {
   const [ahora, setAhora] = useState(Date.now());
   const [zoom, setZoom] = useState(() => Number(recordar.leer(CLAVE_ZOOM)) || 1);
   const [listas, setListas] = useState(0);
-  /** Cuál merienda está en pantalla en este momento. */
+  /** Cuál tanda de meriendas está en pantalla en este momento. */
   const [turno, setTurno] = useState(0);
 
   const tablero = useRef(null);
@@ -91,14 +102,8 @@ export default function CartaTV() {
   const conContenido = BLOQUES.filter((b) => grupos[b.clave].length > 0);
   const hayVarios = conContenido.length > 1;
   const vacia = conContenido.length === 0;
-  /**
-   * Especiales y meriendas comparten renglón cuando los dos tienen algo.
-   *
-   * Son bloques cortos —un especial, una merienda a la vez— y apilados dejan
-   * la carta en tres renglones: el ajuste automático encoge todo para que
-   * quepa y los platos se ven diminutos desde la mesa.
-   */
-  const pareado = grupos.especial.length > 0 && grupos.merienda.length > 0;
+  /** En cuántas tandas de a cuatro se reparten las meriendas. */
+  const lotes = Math.max(1, Math.ceil(cuantasMeriendas / POR_LOTE));
 
   /** Igual que en cocina: se reduce el tamaño hasta que todo quepa. */
   useLayoutEffect(() => {
@@ -135,18 +140,17 @@ export default function CartaTV() {
     ajustar();
     window.addEventListener("resize", ajustar);
     return () => window.removeEventListener("resize", ajustar);
-  }, [platos, fijo, zoom, listas]);
+    // `turno` entra acá porque la última tanda puede traer menos de cuatro
+    // meriendas: cambia el alto del bloque y hay que volver a ajustar.
+  }, [platos, fijo, zoom, listas, turno]);
 
-  // Las meriendas se turnan: una a la vez, cambiando sola.
+  // Las meriendas se turnan por tandas de cuatro, cambiando solas.
   useEffect(() => {
     setTurno(0);
-    if (cuantasMeriendas < 2) return;
-    const t = setInterval(
-      () => setTurno((i) => (i + 1) % cuantasMeriendas),
-      TURNO_MERIENDA
-    );
+    if (lotes < 2) return;
+    const t = setInterval(() => setTurno((i) => (i + 1) % lotes), TURNO_MERIENDA);
     return () => clearInterval(t);
-  }, [cuantasMeriendas]);
+  }, [lotes]);
 
   const cambiarZoom = (paso) => {
     const z = Math.min(1.6, Math.max(0.6, Number((zoom + paso).toFixed(2))));
@@ -195,7 +199,7 @@ export default function CartaTV() {
           <p>Los platos de hoy aparecen aquí solos, sin recargar</p>
         </div>
       ) : (
-        <div className={"carta-bloques" + (pareado ? " pareado" : "")}>
+        <div className="carta-bloques">
           {BLOQUES.map((b) => {
             const delBloque = grupos[b.clave];
             if (!delBloque.length) return null;
@@ -207,15 +211,20 @@ export default function CartaTV() {
                 {hayVarios && <h2 className="carta-rotulo">{b.titulo}</h2>}
 
                 <div className="carta-grid">
-                  {(b.clave === "merienda" && delBloque.length > 1
-                    ? [delBloque[turno % delBloque.length]]
+                  {(b.clave === "merienda"
+                    ? delBloque.slice((turno % lotes) * POR_LOTE, (turno % lotes) * POR_LOTE + POR_LOTE)
                     : delBloque
                   ).map((p) => {
                     const { titulo, subtitulo, detalles } = resumenPlato(p);
                     const fotos = (p.fotos || []).filter(Boolean);
 
                     return (
-                      <article className={"plato " + b.clave} key={p.id}>
+                      // La tanda va en la llave para que cada cambio vuelva a
+                      // entrar con su animación en vez de cambiar de golpe.
+                      <article
+                        className={"plato " + b.clave}
+                        key={b.clave === "merienda" ? `${turno}:${p.id}` : p.id}
+                      >
                         <div className="plato-foto">
                           <Foto id={fotos[0]} onListo={() => setListas((n) => n + 1)} />
                           {fotos[1] && (
@@ -243,10 +252,10 @@ export default function CartaTV() {
                   })}
                 </div>
 
-                {b.clave === "merienda" && delBloque.length > 1 && (
+                {b.clave === "merienda" && lotes > 1 && (
                   <div className="carta-puntos" aria-hidden="true">
-                    {delBloque.map((x, i) => (
-                      <span key={x.id} className={i === turno % delBloque.length ? "on" : ""} />
+                    {Array.from({ length: lotes }, (_, i) => (
+                      <span key={i} className={i === turno % lotes ? "on" : ""} />
                     ))}
                   </div>
                 )}

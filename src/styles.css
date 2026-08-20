@@ -810,26 +810,10 @@ textarea {
 }
 
 /* ---- Carta: los dos bloques del comedor ---- */
-/* Los bloques bajan uno debajo del otro, salvo los dos cortos: especiales y
-   meriendas se reparten un mismo renglón. Con tres renglones apilados el
-   ajuste automático tiene que encoger toda la carta para que quepa, y los
-   platos quedan diminutos en el TV; emparejándolos, sobra alto y crecen. */
-.carta-bloques {
-  display: flex; flex-wrap: wrap; align-items: flex-start;
-  gap: 1.4em 1.6em; margin: auto 0;
-}
-.carta-bloque { flex: 1 1 100%; min-width: 0; }
-.carta-bloques.pareado > .carta-bloque.especial,
-.carta-bloques.pareado > .carta-bloque.merienda { flex: 1 1 calc(50% - .8em); }
-/* En media pantalla caben tres columnas, y un especial solo quedaría flaco
-   al lado de la merienda. Se le pone tope de ancho, igual que a ella. */
-.carta-bloques.pareado > .carta-bloque.especial .carta-grid {
-  grid-template-columns: repeat(auto-fill, minmax(17em, 26em));
-  justify-content: start;
-}
-.carta-bloques.pareado > .carta-bloque.especial .carta-grid > .plato:only-child {
-  max-width: none; margin: 0;
-}
+/* Los bloques bajan uno debajo del otro: menú del día, especiales y, de
+   último, las meriendas. */
+.carta-bloques { display: flex; flex-direction: column; gap: 1.4em; margin: auto 0; }
+.carta-bloque { min-width: 0; }
 .carta-bloques .carta-grid { margin: 0; }
 
 .carta-rotulo {
@@ -922,23 +906,26 @@ textarea {
 .chip.on .forma { color: #f3d79a; }
 
 /* ---- Meriendas en el TV ----
-   Van de a una, turnándose. La tarjeta es igual a la de los especiales y del
-   mismo ancho que las demás, para que los tres bloques se vean parejos. */
-.carta-bloque.merienda .carta-grid {
-  grid-template-columns: minmax(17em, 26em);
-  justify-content: start;
-}
-/* La regla del plato solo no aplica: aquí siempre hay uno y va alineado. */
+   Salen por tandas de cuatro, turnándose. Usan la misma rejilla y el mismo
+   tope de ancho que los demás bloques: la tarjeta de una merienda mide igual
+   que la de un almuerzo o la de un especial. */
+/* La regla del plato solo no aplica: la tanda va alineada a la izquierda,
+   aunque en la última quede una sola merienda. */
 .carta-bloque.merienda .carta-grid > .plato:only-child { max-width: none; margin: 0; }
 
-/* La entrada de cada merienda: aparece subiendo y aclarándose. */
+/* La entrada de cada tanda: aparece subiendo y aclarándose. */
 @keyframes entraMerienda {
   from { opacity: 0; transform: translateY(.7em) scale(.98); }
   to   { opacity: 1; transform: none; }
 }
+/* Escalonadas: la segunda entra un pelo después de la primera, y así. Se ve
+   como una tanda que se acomoda, no como cuatro tarjetas que aparecen. */
 .plato.merienda { animation: entraMerienda .5s cubic-bezier(.22, .61, .36, 1) both; }
+.plato.merienda:nth-child(2) { animation-delay: .08s; }
+.plato.merienda:nth-child(3) { animation-delay: .16s; }
+.plato.merienda:nth-child(4) { animation-delay: .24s; }
 
-/* Los puntos dicen cuántas hay y en cuál va */
+/* Los puntos dicen cuántas tandas hay y en cuál va */
 .carta-puntos { display: flex; gap: .45em; margin-top: .7em; }
 .carta-puntos span {
   width: .5em; height: .5em; border-radius: 50%;
@@ -951,17 +938,6 @@ textarea {
   .plato.merienda { animation: none; }
 }
 
-/* En el celular manda una tarjeta por renglón: ni bloques emparejados ni topes
-   de ancho, que ahí la carta se lee bajando. Va al final a propósito, después
-   de las reglas del TV, que son igual de específicas. */
-@media (max-width: 720px) {
-  .carta-bloque.merienda .carta-grid,
-  .carta-bloques.pareado > .carta-bloque.especial .carta-grid {
-    grid-template-columns: 1fr;
-  }
-  .carta-bloques.pareado > .carta-bloque.especial,
-  .carta-bloques.pareado > .carta-bloque.merienda { flex: 1 1 100%; }
-}
 
 /* Lista de combinaciones aprendidas, en el menú fijo */
 .combo-texto {
