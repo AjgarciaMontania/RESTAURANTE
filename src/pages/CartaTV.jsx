@@ -14,43 +14,68 @@ import { fotoEnCache, leerFoto } from "../lib/fotos";
 import { useVersionCorta } from "../lib/version.js";
 
 const CLAVE_ZOOM = "restaurante.cartaZoom";
-const BASE = 16;
+
 /**
- * Hasta dónde se deja encoger la carta.
+ * Cuántas fichas caben de ancho en una zona que ocupa toda la pantalla.
  *
- * Baja más que la de cocina porque acá los bloques van uno debajo del otro y
- * un día muy cargado —muchos corrientes, especiales y la tanda de meriendas—
- * necesita margen para caber. Es el caso extremo: con el menú de un día normal
- * la carta ni se acerca a este tope.
+ * Es la medida que manda en toda la carta: la tarjeta siempre mide un sexto
+ * del ancho útil. Una zona de media pantalla lleva la mitad de columnas, así
+ * que la tarjeta le queda igual de grande. Por eso agregar o quitar una
+ * categoría ya no cambia el tamaño de nada.
  */
-const MIN_ESCALA = 0.2;
-/**
- * A diferencia de la cocina, la carta también crece: es una cartelera para el
- * cliente y se ve pobre con tres platos chiquitos en un TV de 65".
- */
-const MAX_ESCALA = 3;
-/* Paso fino: con pasos gruesos el último salto desperdiciaba hasta un 10% del
-   tamaño posible, que en un TV se nota. */
-const PASO = 0.02;
+const COLS_ZONA = 6;
 
-/** Cuántas meriendas se muestran juntas en cada turno. */
-const POR_LOTE = 5;
+/** Ancho de la tarjeta y hueco entre tarjetas, medidos en em. */
+const ANCHO_EM = 30;
+const HUECO_EM = 0.9;
 
 /**
- * Cuánto dura cada tanda de meriendas en pantalla.
+ * Entre qué límites se mueve la parte del alto que se lleva la foto.
  *
- * Salen por lotes y rotando: si aparecieran todas juntas, el bloque crecería
- * tanto que obligaría a encoger la carta entera. Diez segundos alcanzan para
- * que el cliente lea las cuatro sin sentir que la pantalla lo apura.
+ * Es una sola medida para toda la carta, no una por tarjeta: si cada foto se
+ * quedara con lo que le sobre a su texto, dos tarjetas de la misma zona
+ * tendrían fotos de distinto alto según si el nombre cupo en uno o en dos
+ * renglones. En una pantalla alta la foto se lleva el tope; en una bajita cede
+ * hasta el mínimo antes que ponerse a achicar la letra.
  */
-const TURNO_MERIENDA = 10000;
+const FOTO_MAX = 0.58;
+const FOTO_MIN = 0.45;
 
+/**
+ * Cada cuánto rotan las tandas.
+ *
+ * Todos los bloques cambian a la vez y con el mismo ritmo: lo que no cabe en
+ * su zona espera su turno en vez de obligar a encoger la carta entera. Diez
+ * segundos alcanzan para leer una tanda sin sentir que la pantalla apura.
+ */
+const TURNO = 10000;
+
+/**
+ * Cómo se reparte la pantalla según cuántos bloques haya hoy.
+ *
+ * `cols` y `filas` son cuántas de las dos columnas y de los dos renglones del
+ * tablero ocupa la zona. Con los tres bloques el menú del día va arriba de
+ * lado a lado, y abajo las meriendas y los especiales a medias.
+ */
+const ZONAS = {
+  3: {
+    orden: ["corriente", "merienda", "especial"],
+    zona: { corriente: { cols: 2, filas: 1 }, merienda: { cols: 1, filas: 1 }, especial: { cols: 1, filas: 1 } },
+  },
+  2: { zona: { cols: 2, filas: 1 } },
+  1: { zona: { cols: 2, filas: 2 } },
+};
+
+/** Cuántas fichas caben en una zona: media pantalla de ancho, la mitad. */
+const cupoDe = (z) => ((z.cols === 2 ? COLS_ZONA : COLS_ZONA / 2) * z.filas);
+const columnasDe = (z) => (z.cols === 2 ? COLS_ZONA : COLS_ZONA / 2);
 
 /**
  * La carta en el TV del comedor: lo que hay hoy, con foto y precio.
  *
- * Se abre con  .../#/carta  en pantalla completa. Igual que la de cocina, se
- * achica sola hasta que todo quepa, y se actualiza sin recargar.
+ * Se abre con  .../#/carta  en pantalla completa. La pantalla se parte en
+ * zonas fijas y lo que no cabe se turna, así que el tamaño de las tarjetas no
+ * depende de cuántos platos haya. Se actualiza sin recargar.
  */
 export default function CartaTV() {
   const [fecha, setFecha] = useState(hoy());
@@ -100,60 +125,92 @@ export default function CartaTV() {
   // Los especiales van en su propio bloque: es lo que le da cara a la carta.
   // Las meriendas también, y esas salen solas del catálogo.
   const grupos = { ...separarPlatos(platos), merienda: platosDeMeriendas(fijo) };
-  const cuantasMeriendas = grupos.merienda.length;
   const conContenido = BLOQUES.filter((b) => grupos[b.clave].length > 0);
   const hayVarios = conContenido.length > 1;
   const vacia = conContenido.length === 0;
-  /** En cuántas tandas se reparten las meriendas. */
-  const lotes = Math.max(1, Math.ceil(cuantasMeriendas / POR_LOTE));
 
+  /**
+   * El reparto del día: qué zona le toca a cada bloque y cuántas fichas le
+   * caben. De ahí sale en cuántas tandas se turna cada uno.
+   */
+  const reparto = ZONAS[conContenido.length] || ZONAS[1];
+  const enPantalla = (reparto.orden || conContenido.map((b) => b.clave))
+    .map((clave) => {
+      const b = BLOQUES.find((x) => x.clave === clave);
+      const lista = grupos[clave] || [];
+      const zona = reparto.zona[clave] || reparto.zona;
+      const cupo = cupoDe(zona);
+      return { ...b, lista, zona, cupo, lotes: Math.max(1, Math.ceil(lista.length / cupo)) };
+    })
+    .filter((x) => x.lista.length);
 
-  /** Igual que en cocina: se reduce el tamaño hasta que todo quepa. */
+  /** El bloque que más se turna manda el ciclo: así todos cambian a la vez. */
+  const masLotes = Math.max(1, ...enPantalla.map((x) => x.lotes));
+
+  /**
+   * El tamaño de letra sale de una cuenta, no de tantear hasta que quepa.
+   *
+   * Antes se probaba tamaño por tamaño hasta que el tablero cupiera, y por eso
+   * al agregar una categoría se encogía todo. Ahora la tarjeta siempre mide un
+   * sexto del ancho útil, así que el tamaño de letra sale directo de ahí; solo
+   * si la pantalla es muy baja se le baja para no dejar la foto sin alto.
+   */
   useLayoutEffect(() => {
     const el = tablero.current;
     if (!el) return;
 
-    const desborda = () => {
-      const r = document.documentElement;
-      return r.scrollHeight > window.innerHeight + 2 || r.scrollWidth > window.innerWidth + 1;
-    };
-
-    const poner = (f) => el.style.fontSize = (BASE * f).toFixed(2) + "px";
-
     const ajustar = () => {
-      let f = zoom;
-      poner(f);
-      let vueltas = 0;
-
-      // En un celular la carta se lee bajando, no encogiéndola hasta que no se
-      // vea nada. El ajuste automático es cosa del TV.
-      if (window.innerWidth <= 720) return;
-
-      if (desborda()) {
-        while (desborda() && f > MIN_ESCALA && vueltas++ < 60) poner((f -= PASO));
+      // En el celular la carta se lee bajando, con su tamaño normal.
+      if (window.innerWidth <= 720) {
+        el.style.fontSize = "";
         return;
       }
 
-      // Sobra pantalla: se agranda hasta justo antes de desbordar.
-      const tope = MAX_ESCALA * zoom;
-      while (!desborda() && f < tope && vueltas++ < 60) poner((f += PASO));
-      if (desborda()) poner(f - PASO);
+      const zonas = el.querySelector(".carta-bloques");
+      if (!zonas) return;
+
+      // Por ancho: `COLS_ZONA` tarjetas de `ANCHO_EM` más sus huecos tienen que
+      // dar justo el ancho del tablero.
+      const ancho = zonas.clientWidth;
+      let f = (ancho / (COLS_ZONA * ANCHO_EM + (COLS_ZONA - 1) * HUECO_EM)) * zoom;
+      el.style.fontSize = f.toFixed(2) + "px";
+
+      // Por alto: el texto tiene que caber en la parte que no es foto. Se mide
+      // el renglonaje más alto de la carta, porque una tarjeta con el nombre en
+      // dos líneas manda sobre las demás. Dos pasadas, porque el rótulo también
+      // crece con la letra y cambia el alto de la tarjeta.
+      for (let i = 0; i < 2; i++) {
+        const ficha = el.querySelector(".plato");
+        if (!ficha) return;
+
+        const alto = ficha.getBoundingClientRect().height;
+        const emTexto = Math.max(
+          ...[...el.querySelectorAll(".plato-cuerpo")].map((t) => t.scrollHeight / f)
+        );
+        if (!alto || !Number.isFinite(emTexto) || emTexto <= 0) return;
+
+        // Primero cede la foto; solo si ni cediendo alcanza, baja la letra.
+        const parte = Math.min(FOTO_MAX, 1 - (emTexto * f) / alto);
+        el.style.setProperty("--foto", (Math.max(FOTO_MIN, parte) * 100).toFixed(1) + "%");
+        if (parte >= FOTO_MIN) break;
+
+        f = (alto * (1 - FOTO_MIN)) / emTexto;
+        el.style.fontSize = f.toFixed(2) + "px";
+      }
     };
 
     ajustar();
     window.addEventListener("resize", ajustar);
     return () => window.removeEventListener("resize", ajustar);
-    // `turno` entra acá porque la última tanda puede traer menos de cuatro
-    // meriendas: cambia el alto del bloque y hay que volver a ajustar.
   }, [platos, fijo, zoom, listas, turno]);
 
-  // Las meriendas se turnan por tandas de cuatro, cambiando solas.
+  // Todas las tandas cambian al tiempo y con el mismo ritmo.
   useEffect(() => {
     setTurno(0);
-    if (lotes < 2) return;
-    const t = setInterval(() => setTurno((i) => (i + 1) % lotes), TURNO_MERIENDA);
+    if (masLotes < 2) return;
+    const t = setInterval(() => setTurno((i) => i + 1), TURNO);
     return () => clearInterval(t);
-  }, [lotes]);
+  }, [masLotes]);
 
   const cambiarZoom = (paso) => {
     const z = Math.min(1.6, Math.max(0.6, Number((zoom + paso).toFixed(2))));
@@ -203,21 +260,29 @@ export default function CartaTV() {
         </div>
       ) : (
         <div className="carta-bloques">
-          {BLOQUES.map((b) => {
-            const delBloque = grupos[b.clave];
-            if (!delBloque.length) return null;
+          {enPantalla.map((b) => {
+            const tanda = turno % b.lotes;
+            const visibles = b.lista.slice(tanda * b.cupo, tanda * b.cupo + b.cupo);
+            const columnas = columnasDe(b.zona);
 
             return (
-              <section className={"carta-bloque " + b.clave} key={b.clave}>
+              <section
+                className={"carta-bloque " + b.clave}
+                key={b.clave}
+                style={{ gridColumn: `span ${b.zona.cols}`, gridRow: `span ${b.zona.filas}` }}
+              >
                 {/* El rótulo solo aparece si de verdad hay dos grupos: con un
                     solo tipo de plato, un encabezado suelto sobra. */}
                 {hayVarios && <h2 className="carta-rotulo">{b.titulo}</h2>}
 
-                <div className="carta-grid">
-                  {(b.clave === "merienda"
-                    ? delBloque.slice((turno % lotes) * POR_LOTE, (turno % lotes) * POR_LOTE + POR_LOTE)
-                    : delBloque
-                  ).map((p) => {
+                <div
+                  className="carta-grid"
+                  /* Los renglones son los de la zona, no los que se llenen:
+                     así una tanda corta conserva el tamaño de tarjeta en vez
+                     de estirarse hasta ocupar toda la pantalla de alto. */
+                  style={{ "--cols": String(columnas), "--filas": String(b.zona.filas) }}
+                >
+                  {visibles.map((p) => {
                     const { titulo, subtitulo, detalles } = resumenPlato(p);
                     const fotos = (p.fotos || []).filter(Boolean);
 
@@ -225,8 +290,8 @@ export default function CartaTV() {
                       // La tanda va en la llave para que cada cambio vuelva a
                       // entrar con su animación en vez de cambiar de golpe.
                       <article
-                        className={"plato " + b.clave}
-                        key={b.clave === "merienda" ? `${turno}:${p.id}` : p.id}
+                        className={"plato " + b.clave + (b.lotes > 1 ? " rota" : "")}
+                        key={b.lotes > 1 ? `${tanda}:${p.id}` : p.id}
                       >
                         <div className="plato-foto">
                           <Foto id={fotos[0]} onListo={() => setListas((n) => n + 1)} />
@@ -255,10 +320,10 @@ export default function CartaTV() {
                   })}
                 </div>
 
-                {b.clave === "merienda" && lotes > 1 && (
+                {b.lotes > 1 && (
                   <div className="carta-puntos" aria-hidden="true">
-                    {Array.from({ length: lotes }, (_, i) => (
-                      <span key={i} className={i === turno % lotes ? "on" : ""} />
+                    {Array.from({ length: b.lotes }, (_, i) => (
+                      <span key={i} className={i === tanda ? "on" : ""} />
                     ))}
                   </div>
                 )}
