@@ -524,7 +524,7 @@ chk10('La sopa vacia queda en null', guardable.sopa, null);
 
 
 // --- Platos de la seccion Especiales, y los dos bloques del TV ---
-import { esEspecial, separarPlatos } from './src/lib/carta.js';
+import { BLOQUES, esEspecial, separarPlatos } from './src/lib/carta.js';
 
 const bandeja = { id: 'e1', nombre: 'Bandeja paisa', precio: 18000 };
 const casa = { ...PLATO_VACIO, deLaCasa: bandeja };
@@ -540,6 +540,10 @@ chk10('  y se guarda para Firestore', limpiarPlato(casa).deLaCasa.nombre, 'Bande
 chk10('Es especial por ser de la casa', esEspecial(casa), true);
 chk10('Es especial por el interruptor', esEspecial({ ...completo, especial: true }), true);
 chk10('El corriente no es especial', esEspecial(completo), false);
+
+// Todo bloque anunciado tiene su lista: recorrerlos nunca puede reventar
+chk10('separarPlatos responde por cada bloque',
+  BLOQUES.every((b) => Array.isArray(separarPlatos([])[b.clave])), true);
 
 const partido = separarPlatos([completo, casa, { ...completo, especial: true }]);
 chk10('Un corriente en el bloque del dia', partido.corriente.length, 1);

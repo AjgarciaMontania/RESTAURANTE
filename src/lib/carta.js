@@ -70,10 +70,18 @@ export const hayPlato = (p) =>
  */
 export const esEspecial = (p) => !!p?.deLaCasa || !!p?.especial;
 
-/** Parte la carta en los dos bloques que se proyectan. */
+/**
+ * Parte la carta en los bloques que se proyectan.
+ *
+ * Devuelve SIEMPRE una lista por cada bloque de `BLOQUES`, aunque venga vacía:
+ * quien recorra los bloques no tiene que andar preguntando si existe. Las
+ * meriendas salen del catálogo, no de la carta, así que aquí van vacías y la
+ * pantalla del TV las llena aparte.
+ */
 export const separarPlatos = (platos = []) => ({
   corriente: platos.filter((p) => !esEspecial(p)),
   especial: platos.filter(esEspecial),
+  merienda: [],
 });
 
 /**

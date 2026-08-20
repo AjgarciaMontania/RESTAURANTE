@@ -431,10 +431,10 @@ export default function Carta() {
       )}
 
       {BLOQUES.map((b) =>
-        grupos[b.clave].length === 0 ? null : (
+        (grupos[b.clave] || []).length === 0 ? null : (
           <div key={b.clave}>
             <p className="rotulo-bloque">{b.titulo}</p>
-            {grupos[b.clave].map((p) => {
+            {(grupos[b.clave] || []).map((p) => {
               const { titulo, subtitulo, detalles } = resumenPlato(p);
               return (
                 <div className={"card plato-fila " + b.clave} key={p.id}>
