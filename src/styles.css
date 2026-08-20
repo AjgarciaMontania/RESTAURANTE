@@ -740,13 +740,15 @@ textarea {
      porcentaje, la foto quedaba de alto fijo y había que recortarla en una
      franja. Todos los bloques usan la misma medida, así que una merienda
      mide igual que un almuerzo. */
-  --ancho: 22em;
+  --ancho: 30em;
   display: grid; gap: var(--hueco);
   /* `auto-fit` y no `auto-fill`: acá el ancho de columna es fijo, así que
      colapsar las columnas vacías no lo altera, y sí deja centrar el bloque
      que no llena el renglón. */
   grid-template-columns: repeat(auto-fit, var(--ancho));
-  justify-content: center;
+  /* El menú del día y los especiales arrancan por la izquierda, como se lee.
+     Solo las meriendas se centran (más abajo). */
+  justify-content: start;
   align-items: stretch;
 }
 .plato {
@@ -782,23 +784,27 @@ textarea {
    el precio, no el detalle de la imagen. */
 .plato-cuerpo h2 {
   margin: 0 0 .3em; font-family: var(--serif); font-weight: 400;
-  font-size: 2em; line-height: 1.15; color: #1f5c45; letter-spacing: .01em;
+  font-size: 3.2em; line-height: 1.12; color: #1f5c45; letter-spacing: .01em;
   overflow-wrap: anywhere;
 }
 .plato-cuerpo ul { margin: 0; padding: 0; list-style: none; display: grid; gap: .2em; }
-.plato-cuerpo li { font-size: 1.2em; font-weight: 600; color: #4c4034; overflow-wrap: anywhere; }
+.plato-cuerpo li { font-size: 1.9em; font-weight: 600; color: #4c4034; overflow-wrap: anywhere; }
 .plato-nota {
   margin: .45em 0 0; font-family: var(--serif); font-style: italic;
   font-size: .95em; color: #8b7d6b;
 }
 .plato-precio {
   margin-top: auto; padding-top: .55em;
-  font-size: 2.1em; font-weight: 800; color: #b98b2e;
+  font-size: 3.35em; font-weight: 800; color: #b98b2e;
   font-variant-numeric: tabular-nums;
 }
 
 @media (max-width: 720px) {
   .carta-grid { grid-template-columns: 1fr; gap: .8em; }
+  /* En el celular no hay ajuste automático, así que la letra del TV —pensada
+     para leerse a cinco metros— se sale de la pantalla. Acá va en su medida. */
+  .plato-presenta { font-size: 1.15em; }
+  .plato-cuerpo li { font-size: 1.05em; }
   .plato-cuerpo h2 { font-size: 1.7em; }
   .plato-precio { font-size: 1.8em; }
 }
@@ -832,17 +838,15 @@ textarea {
 .carta-bloque { min-width: 0; }
 .carta-bloques .carta-grid { margin: 0; }
 
-/* Rótulo centrado sobre su bloque: como las tarjetas van centradas, un
-   encabezado pegado a la izquierda dejaba el bloque descuadrado. */
 .carta-rotulo {
-  margin: 0 0 .4em; padding-bottom: .3em; text-align: center;
+  margin: 0 0 .45em; padding-bottom: .25em;
   font-family: var(--serif); font-weight: 400;
-  font-size: 1.5em; letter-spacing: .09em; text-transform: uppercase;
+  font-size: 4.2em; letter-spacing: .09em; text-transform: uppercase;
   color: #e9c87d; position: relative;
 }
 .carta-rotulo::after {
-  content: ""; position: absolute; left: 50%; transform: translateX(-50%);
-  bottom: 0; width: 3.2em; height: .13em; background: #d8a94f; border-radius: 2px;
+  content: ""; position: absolute; left: 0; bottom: 0;
+  width: 2.6em; height: .09em; background: #d8a94f; border-radius: 2px;
 }
 .carta-bloque.especial .carta-rotulo { color: #f3d79a; }
 
@@ -908,7 +912,7 @@ textarea {
 /* Cómo se sirve: distingue dos tarjetas del mismo plato */
 .plato-presenta {
   margin: -.1em 0 .35em; font-weight: 700;
-  font-size: 1.25em; line-height: 1.2; color: #a8631a; letter-spacing: .01em;
+  font-size: 2em; line-height: 1.2; color: #a8631a; letter-spacing: .01em;
 }
 .plato-texto .presenta { color: #a8631a; font-weight: 700; font-size: 13px; }
 
@@ -941,6 +945,12 @@ textarea {
 .plato.merienda:nth-child(5) { animation-delay: .32s; }
 
 
+/* La tanda va centrada en la pantalla: son pocas y contra la izquierda
+   dejaban medio TV en verde. El rótulo se centra con ellas. */
+.carta-bloque.merienda .carta-grid { justify-content: center; }
+.carta-bloque.merienda .carta-rotulo { text-align: center; }
+.carta-bloque.merienda .carta-rotulo::after { left: 50%; transform: translateX(-50%); }
+
 /* Los puntos dicen cuántas tandas hay y en cuál va */
 .carta-puntos { display: flex; gap: .45em; margin-top: .7em; justify-content: center; }
 .carta-puntos span {
@@ -952,6 +962,14 @@ textarea {
 
 @media (prefers-reduced-motion: reduce) {
   .plato.merienda { animation: none; }
+}
+
+/* El rótulo del TV en el celular. Va al final a propósito: la regla del TV
+   está más abajo que el bloque de móvil de arriba y, con la misma
+   especificidad, le ganaba — "MERIENDAS" salía de 67px y se desbordaba de
+   lado. */
+@media (max-width: 720px) {
+  .carta-rotulo { font-size: 2.1em; }
 }
 
 

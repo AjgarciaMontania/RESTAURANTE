@@ -23,13 +23,15 @@ const BASE = 16;
  * necesita margen para caber. Es el caso extremo: con el menú de un día normal
  * la carta ni se acerca a este tope.
  */
-const MIN_ESCALA = 0.3;
+const MIN_ESCALA = 0.2;
 /**
  * A diferencia de la cocina, la carta también crece: es una cartelera para el
  * cliente y se ve pobre con tres platos chiquitos en un TV de 65".
  */
 const MAX_ESCALA = 3;
-const PASO = 0.05;
+/* Paso fino: con pasos gruesos el último salto desperdiciaba hasta un 10% del
+   tamaño posible, que en un TV se nota. */
+const PASO = 0.02;
 
 /** Cuántas meriendas se muestran juntas en cada turno. */
 const POR_LOTE = 5;
