@@ -24,6 +24,7 @@ import {
   hayPlato,
   limpiarPlato,
   precioPlato,
+  presentacionesDelPlato,
   resumenPlato,
   separarPlatos,
 } from "../lib/carta";
@@ -52,6 +53,8 @@ export default function Carta() {
   const [platos, setPlatos] = useState([]);
   const [borrador, setBorrador] = useState(null);
   const [guardando, setGuardando] = useState(false);
+  /** Ids de las presentaciones marcadas: una tarjeta por cada una. */
+  const [presentSel, setPresentSel] = useState([]);
   const [toast, setToast] = useState("");
 
   useEffect(() => {
@@ -130,21 +133,67 @@ export default function Carta() {
   const abrirBorrador = (p) => {
     // Lo guardado cuenta como escogido a mano: no se pisa solo.
     fotoDelMenu.current = ["", ""];
+    setPresentSel(p?.presentacion?.id ? [p.presentacion.id] : []);
     setBorrador(p);
+  };
+
+  /**
+   * Marca o desmarca una forma de servir.
+   *
+   * Editando una tarjeta solo puede quedar una: esa tarjeta es una sola. Al
+   * crear se pueden marcar varias y salen varias tarjetas de un solo golpe.
+   */
+  const alternarPresentacion = (id) => {
+    const marcadas = presentSel.includes(id)
+      ? presentSel.filter((x) => x !== id)
+      : borrador?.id
+      ? [id]
+      : [...presentSel, id];
+
+    setPresentSel(marcadas);
+    // La vista previa y la foto siguen a la primera marcada.
+    const lista = presentacionesDelPlato(borrador);
+    cambiar({ presentacion: lista.find((x) => x.id === marcadas[0]) || null });
   };
 
   const guardar = async () => {
     if (!hayPlato(borrador) || guardando) return;
     setGuardando(true);
     try {
-      const datos = limpiarPlato(borrador);
+      const disponibles = presentacionesDelPlato(borrador);
+      // Cada forma de servir marcada sale como su propia tarjeta, con su foto.
+      const elegidas = disponibles.filter((x) => presentSel.includes(x.id));
+      const variantes = elegidas.length ? elegidas : [null];
+
       if (borrador.id) {
-        await updateDoc(doc(db, "platos", borrador.id), datos);
+        await updateDoc(
+          doc(db, "platos", borrador.id),
+          limpiarPlato({ ...borrador, presentacion: variantes[0] })
+        );
       } else {
-        await addDoc(collection(db, "platos"), { ...datos, fecha, creado: serverTimestamp() });
+        for (const v of variantes)
+          await addDoc(collection(db, "platos"), {
+            ...limpiarPlato({
+              ...borrador,
+              presentacion: v,
+              fotos: v?.foto
+                ? [v.foto, (borrador.fotos || [])[1] || ""]
+                : borrador.fotos,
+            }),
+            fecha,
+            creado: serverTimestamp(),
+          });
       }
+
       setBorrador(null);
-      avisar(borrador.id ? "Plato actualizado ✓" : "Plato publicado ✓");
+      setPresentSel([]);
+      avisar(
+        borrador.id
+          ? "Plato actualizado ✓"
+          : variantes.length > 1
+          ? `${variantes.length} presentaciones publicadas ✓`
+          : "Plato publicado ✓"
+      );
     } catch (e) {
       console.error(e);
       alert(
@@ -266,6 +315,31 @@ export default function Carta() {
             </div>
           )}
 
+          {presentacionesDelPlato(borrador).length > 0 && (
+            <>
+              <p className="muted" style={{ fontSize: 12, margin: "0 0 8px" }}>
+                🍽️ CÓMO SE SIRVE HOY{" "}
+                <span style={{ opacity: 0.7 }}>
+                  {borrador.id
+                    ? "(esta tarjeta lleva una)"
+                    : "(marca varias y salen varias tarjetas)"}
+                </span>
+              </p>
+              <div className="chips" style={{ marginBottom: 14 }}>
+                {presentacionesDelPlato(borrador).map((x) => (
+                  <button
+                    key={x.id}
+                    className={"chip" + (presentSel.includes(x.id) ? " on" : "")}
+                    onClick={() => alternarPresentacion(x.id)}
+                  >
+                    {x.nombre || "Como sale en la foto"}
+                    {x.precio > 0 && <span className="p">{money(x.precio)}</span>}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+
           <input
             type="text"
             placeholder="Nota corta (opcional): con jugo natural"
@@ -294,6 +368,11 @@ export default function Carta() {
             <div className={"previa-carta" + (esEspecial(borrador) ? " especial" : "")}>
               <div style={{ minWidth: 0 }}>
                 <b>{resumenPlato(borrador).titulo}</b>
+                {presentSel.length > 1 && (
+                  <div className="muted" style={{ fontSize: 12 }}>
+                    Salen <b>{presentSel.length} tarjetas</b>, una por presentación
+                  </div>
+                )}
                 <div className="muted" style={{ fontSize: 12 }}>
                   Sale en <b>{esEspecial(borrador) ? "Especiales de la casa" : "Menú del día"}</b>
                 </div>
@@ -310,7 +389,13 @@ export default function Carta() {
             >
               {guardando ? "Guardando…" : borrador.id ? "Guardar cambios" : "Publicar en la carta"}
             </button>
-            <button className="btn" onClick={() => setBorrador(null)}>
+            <button
+              className="btn"
+              onClick={() => {
+                setBorrador(null);
+                setPresentSel([]);
+              }}
+            >
               Cancelar
             </button>
           </div>
@@ -332,7 +417,7 @@ export default function Carta() {
           <div key={b.clave}>
             <p className="rotulo-bloque">{b.titulo}</p>
             {grupos[b.clave].map((p) => {
-              const { titulo, detalles } = resumenPlato(p);
+              const { titulo, subtitulo, detalles } = resumenPlato(p);
               return (
                 <div className={"card plato-fila " + b.clave} key={p.id}>
             <div className="plato-minis">

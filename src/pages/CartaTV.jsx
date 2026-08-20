@@ -161,7 +161,7 @@ export default function CartaTV() {
 
                 <div className="carta-grid">
                   {delBloque.map((p) => {
-                    const { titulo, detalles } = resumenPlato(p);
+                    const { titulo, subtitulo, detalles } = resumenPlato(p);
                     const fotos = (p.fotos || []).filter(Boolean);
 
                     return (
@@ -177,6 +177,7 @@ export default function CartaTV() {
 
                         <div className="plato-cuerpo">
                           <h2>{titulo}</h2>
+                          {subtitulo && <p className="plato-presenta">{subtitulo}</p>}
                           <ul>
                             {detalles.map((x, k) => (
                               <li key={k}>

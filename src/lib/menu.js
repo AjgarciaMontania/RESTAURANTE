@@ -54,6 +54,37 @@ export const menuVacio = (m) => vacioEn(m, CLAVES);
 /** ¿Está sin armar el menú de hoy? Las meriendas no cuentan: van siempre. */
 export const diarioVacio = (m) => vacioEn(m, CLAVES_DIARIAS);
 
+/** Cuántas presentaciones puede tener un mismo plato. */
+export const MAX_PRESENTACIONES = 6;
+
+/**
+ * Las presentaciones de un plato del catálogo.
+ *
+ * Un mismo arroz con pollo se sirve con aguacate, con plátano o solo: es el
+ * mismo plato, no tres. Cada presentación guarda su foto y, si hace falta, su
+ * propio precio.
+ *
+ * Las filas viejas traían una sola `foto` suelta: se leen como una
+ * presentación sin nombre, para no perder nada de lo ya subido.
+ *
+ * @returns {{id,nombre,foto,precio}[]}
+ */
+export function presentacionesDe(fila) {
+  const lista = (fila?.presentaciones || []).filter((p) => p && (p.foto || p.nombre?.trim()));
+  if (lista.length)
+    return lista.map((p) => ({
+      id: p.id || "",
+      nombre: (p.nombre || "").trim(),
+      foto: p.foto || "",
+      precio: Number(p.precio) || 0,
+    }));
+
+  return fila?.foto ? [{ id: "base", nombre: "", foto: fila.foto, precio: 0 }] : [];
+}
+
+/** La foto que representa al plato en las listas. */
+export const fotoDe = (fila) => presentacionesDe(fila)[0]?.foto || "";
+
 /** Solo las filas que alcanzaron a tener nombre. */
 export const conNombre = (arr) => (arr || []).filter((x) => x?.nombre?.trim());
 

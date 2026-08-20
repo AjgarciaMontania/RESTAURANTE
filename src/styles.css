@@ -860,3 +860,30 @@ textarea {
 }
 .btn.icon.foto.puesta { border-color: var(--verde); }
 .mini-fila { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+/* Presentaciones de un plato: mismo plato, distinta forma de servirlo */
+.presentaciones {
+  margin: 4px 0 10px; padding: 10px;
+  background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px;
+}
+.presentacion {
+  padding: 8px; margin-bottom: 8px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 9px;
+}
+.presentacion .foto-campo { margin-bottom: 0; background: transparent; border: 0; padding: 0; }
+.btn.icon.foto { position: relative; }
+.btn.icon.foto .cuantas {
+  position: absolute; right: -3px; top: -3px;
+  min-width: 18px; height: 18px; padding: 0 4px;
+  display: grid; place-items: center;
+  background: var(--verde); color: #fdfbf6;
+  font-size: 10px; font-weight: 800; font-style: normal;
+  border-radius: 20px; box-shadow: 0 0 0 2px var(--surface);
+}
+
+/* Cómo se sirve: distingue dos tarjetas del mismo plato */
+.plato-presenta {
+  margin: -.15em 0 .35em; font-weight: 700;
+  font-size: .95em; color: #a8631a; letter-spacing: .01em;
+}
+.plato-texto .presenta { color: #a8631a; font-weight: 700; font-size: 13px; }

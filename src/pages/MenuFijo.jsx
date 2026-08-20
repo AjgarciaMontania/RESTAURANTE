@@ -1,8 +1,15 @@
 import { useEffect, useState } from "react";
 import { doc, getDoc, onSnapshot, setDoc } from "firebase/firestore";
 import { db, hoy } from "../firebase";
-import { MENU_ID, MENU_VACIO, SECCIONES, menuVacio } from "../lib/menu";
-import CampoFoto from "../components/CampoFoto.jsx";
+import {
+  MENU_ID,
+  MENU_VACIO,
+  SECCIONES,
+  fotoDe,
+  menuVacio,
+  presentacionesDe,
+} from "../lib/menu";
+import Presentaciones from "../components/Presentaciones.jsx";
 import MiniFoto from "../components/MiniFoto.jsx";
 
 const uid = () => Math.random().toString(36).slice(2, 9);
@@ -86,9 +93,10 @@ export default function MenuFijo() {
           precio de cada fila es opcional y solo manda cuando el plato va solo.
         </p>
         <p className="muted" style={{ margin: "8px 0 0", fontSize: 13 }}>
-          El botón 📷 de cada fila guarda la <b>foto para la carta del comedor</b>. Se
-          sube una sola vez: cuando armes el plato en <b>Carta</b>, la foto ya viene
-          puesta sola.
+          El botón 📷 de cada fila guarda las <b>fotos para la carta del comedor</b>. Un
+          mismo plato puede tener varias <b>presentaciones</b> —con aguacate, con
+          plátano, solo— y cada una sale como su propia tarjeta. Se suben una vez y de
+          ahí en adelante aparecen solas.
         </p>
         <p className="muted" style={{ margin: "8px 0 0", fontSize: 13 }}>
           Las <b>meriendas</b> son la excepción: llevan su propio precio, se cobran
@@ -117,6 +125,8 @@ export default function MenuFijo() {
 
             {menu[s.key].map((fila) => {
               const llave = s.key + ":" + fila.id;
+              const cuantas = s.conFoto ? presentacionesDe(fila).length : 0;
+              const portada = s.conFoto ? fotoDe(fila) : "";
 
               return (
                 <div key={fila.id}>
@@ -140,12 +150,13 @@ export default function MenuFijo() {
 
                     {s.conFoto && (
                       <button
-                        className={"btn icon foto" + (fila.foto ? " puesta" : "")}
-                        title="Foto para la carta del comedor"
-                        aria-label="Foto del plato"
+                        className={"btn icon foto" + (cuantas ? " puesta" : "")}
+                        title="Fotos para la carta del comedor"
+                        aria-label="Fotos del plato"
                         onClick={() => setFotoAbierta(fotoAbierta === llave ? "" : llave)}
                       >
-                        {fila.foto ? <MiniFoto id={fila.foto} className="mini-fila" /> : "📷"}
+                        {portada ? <MiniFoto id={portada} className="mini-fila" /> : "📷"}
+                        {cuantas > 1 && <i className="cuantas">{cuantas}</i>}
                       </button>
                     )}
 
@@ -159,11 +170,9 @@ export default function MenuFijo() {
                   </div>
 
                   {s.conFoto && fotoAbierta === llave && (
-                    <CampoFoto
-                      id={fila.foto || ""}
-                      titulo={fila.nombre || "Foto para la carta"}
-                      pista="Se sube una vez y sale sola en la carta del comedor"
-                      onCambio={(idFoto) => editar(s.key, fila.id, "foto", idFoto)}
+                    <Presentaciones
+                      fila={fila}
+                      onCambio={(lista) => editar(s.key, fila.id, "presentaciones", lista)}
                     />
                   )}
                 </div>

@@ -4,6 +4,7 @@ import {
   soloPrincipio,
   soloSabor,
 } from "./negocio.js";
+import { presentacionesDe } from "./menu.js";
 
 /**
  * La carta del día: los platos que se muestran al cliente en el TV.
@@ -23,6 +24,13 @@ export const PLATO_VACIO = {
   especial: false,
   /** Plato de la sección ⭐ Especiales, con su propio precio. Va solo. */
   deLaCasa: null,
+  /**
+   * Cómo se sirve hoy: {id, nombre, foto, precio}.
+   *
+   * El mismo arroz con pollo va con aguacate o con plátano. Es el mismo plato,
+   * así que solo cambia la foto, el rótulo y —si hace falta— el precio.
+   */
+  presentacion: null,
   nota: "",
   fotos: [],
 };
@@ -66,6 +74,21 @@ export const separarPlatos = (platos = []) => ({
   especial: platos.filter(esEspecial),
 });
 
+/**
+ * De qué fila del catálogo salen las presentaciones del plato que se arma.
+ *
+ * Manda el plato de la casa; si no, la primera proteína que tenga fotos.
+ */
+export function origenPresentaciones(sel) {
+  if (sel?.deLaCasa) return sel.deLaCasa;
+  return (sel?.proteinas || []).find((x) => presentacionesDe(x).length > 1) ||
+    (sel?.proteinas || []).find((x) => presentacionesDe(x).length) ||
+    null;
+}
+
+/** Las formas de servir disponibles para lo que se está armando. */
+export const presentacionesDelPlato = (sel) => presentacionesDe(origenPresentaciones(sel));
+
 /** Mayúscula solo en la primera letra, sin gritarle al cliente. */
 export const capitalizar = (t) => {
   const s = (t || "").trim();
@@ -82,9 +105,12 @@ export const capitalizar = (t) => {
  * @returns {{titulo: string, detalles: {ic: string, txt: string}[]}}
  */
 export function resumenPlato(p) {
+  /** Cómo se sirve: va debajo del título, para distinguir dos tarjetas iguales. */
+  const subtitulo = capitalizar(p?.presentacion?.nombre || "");
+
   // El plato de la casa se anuncia con su nombre y ya: es un plato completo.
   if (p?.deLaCasa?.nombre)
-    return { titulo: capitalizar(p.deLaCasa.nombre), detalles: [] };
+    return { titulo: capitalizar(p.deLaCasa.nombre), subtitulo, detalles: [] };
 
   const prot = (p?.proteinas || []).map((x) => capitalizar(x?.nombre)).filter(Boolean);
   const huevos = (p?.huevos || [])
@@ -121,6 +147,7 @@ export function resumenPlato(p) {
 
   return {
     titulo: cabeza?.txt || "Plato del día",
+    subtitulo,
     detalles: partes.filter((x) => x !== cabeza).map(({ ic, txt }) => ({ ic, txt })),
   };
 }
@@ -139,9 +166,11 @@ export function resumenPlato(p) {
  */
 export function fotosSugeridas(sel) {
   const principal =
-    sel?.deLaCasa?.foto || (sel?.proteinas || []).find((x) => x?.foto)?.foto || "";
+    sel?.presentacion?.foto ||
+    presentacionesDe(origenPresentaciones(sel))[0]?.foto ||
+    "";
   const liquido = sel?.caldo || sel?.sopa || null;
-  return [principal, liquido?.foto || ""];
+  return [principal, presentacionesDe(liquido)[0]?.foto || ""];
 }
 
 /**
@@ -151,6 +180,10 @@ export function fotosSugeridas(sel) {
  * precio, se cobra como almuerzo especial para no anunciar un plato en $0.
  */
 export function precioPlato(p, precios) {
+  // La presentación manda solo si de verdad cuesta distinto.
+  const propioPres = Number(p?.presentacion?.precio) || 0;
+  if (propioPres > 0) return propioPres;
+
   if (p?.deLaCasa) {
     const propio = Number(p.deLaCasa.precio) || 0;
     return propio > 0 ? propio : Number(precios?.almuerzoEspecial) || 0;
@@ -161,6 +194,14 @@ export function precioPlato(p, precios) {
 /** Deja el plato listo para guardar en Firestore (sin `undefined`). */
 export const limpiarPlato = (p) => ({
   deLaCasa: p.deLaCasa || null,
+  presentacion: p.presentacion
+    ? {
+        id: p.presentacion.id || "",
+        nombre: (p.presentacion.nombre || "").trim(),
+        foto: p.presentacion.foto || "",
+        precio: Number(p.presentacion.precio) || 0,
+      }
+    : null,
   caldo: p.caldo || null,
   sopa: p.sopa || null,
   principio: p.principio || null,

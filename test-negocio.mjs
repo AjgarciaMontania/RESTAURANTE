@@ -570,6 +570,53 @@ chk10('Toma la primera proteina que tenga foto',
 chk10('Sin fotos en el menu no inventa nada', fotosSugeridas(completo).join('|'), '|');
 chk10('Sin plato tampoco rompe', fotosSugeridas().join('|'), '|');
 
+
+// --- Presentaciones: un mismo plato servido de varias formas ---
+import { presentacionesDe } from './src/lib/menu.js';
+import { presentacionesDelPlato } from './src/lib/carta.js';
+
+const conPresenta = {
+  id: 't9', nombre: 'Arroz con pollo',
+  presentaciones: [
+    { id: 'p1', nombre: 'Con aguacate', foto: 'fAgua', precio: 12000 },
+    { id: 'p2', nombre: 'Con platano', foto: 'fPlat', precio: 0 },
+  ],
+};
+
+chk10('El plato tiene dos presentaciones', presentacionesDe(conPresenta).length, 2);
+chk10('La fila vieja con una foto suelta sigue sirviendo',
+  presentacionesDe({ id: 'x', nombre: 'Carne', foto: 'fVieja' })[0].foto, 'fVieja');
+chk10('  y queda sin nombre', presentacionesDe({ id: 'x', foto: 'fVieja' })[0].nombre, '');
+chk10('Sin fotos no hay presentaciones', presentacionesDe({ id: 'x', nombre: 'Carne' }).length, 0);
+
+chk10('El armador ofrece las del plato',
+  presentacionesDelPlato({ proteinas: [conPresenta] }).length, 2);
+chk10('El plato de la casa manda sobre la proteina',
+  presentacionesDelPlato({ deLaCasa: bandeja, proteinas: [conPresenta] }).length, 0);
+
+// Cada presentacion es una tarjeta distinta, mismo plato
+const conAgua = { ...PLATO_VACIO, proteinas: [conPresenta], presentacion: presentacionesDe(conPresenta)[0] };
+const conPlat = { ...PLATO_VACIO, proteinas: [conPresenta], presentacion: presentacionesDe(conPresenta)[1] };
+
+chk10('Las dos tarjetas se llaman igual', resumenPlato(conAgua).titulo, resumenPlato(conPlat).titulo);
+chk10('  pero el subtitulo las distingue', resumenPlato(conAgua).subtitulo, 'Con aguacate');
+chk10('  la otra tambien', resumenPlato(conPlat).subtitulo, 'Con platano');
+chk10('Sin presentacion no hay subtitulo', resumenPlato(completo).subtitulo, '');
+
+chk10('La presentacion con precio propio manda', precioPlato(conAgua, PRECIOS_DEF), 12000);
+chk10('La que no tiene, cobra la regla normal', precioPlato(conPlat, PRECIOS_DEF), 8000);
+
+chk10('La foto sale de la presentacion', fotosSugeridas(conAgua)[0], 'fAgua');
+chk10('  y la otra de la suya', fotosSugeridas(conPlat)[0], 'fPlat');
+chk10('Sin presentacion toma la primera del plato',
+  fotosSugeridas({ proteinas: [conPresenta] })[0], 'fAgua');
+
+chk10('Se guarda sin undefined',
+  JSON.stringify(limpiarPlato(conAgua).presentacion) ===
+    JSON.stringify(JSON.parse(JSON.stringify(limpiarPlato(conAgua).presentacion))), true);
+chk10('  con su nombre', limpiarPlato(conAgua).presentacion.nombre, 'Con aguacate');
+chk10('Sin presentacion queda en null', limpiarPlato(completo).presentacion, null);
+
 console.log(f10 ? `\n❌ ${f10} fallo(s) en carta` : '\n✅ Carta: todo pasa');
 
 // ---------------------------------------------------------------
