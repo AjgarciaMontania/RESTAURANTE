@@ -89,6 +89,18 @@ export function origenPresentaciones(sel) {
 /** Las formas de servir disponibles para lo que se está armando. */
 export const presentacionesDelPlato = (sel) => presentacionesDe(origenPresentaciones(sel));
 
+/**
+ * ¿Vale la pena preguntar cómo se sirve?
+ *
+ * Con una sola forma sin nombre no hay nada que escoger: es la foto de siempre
+ * y preguntarlo solo confunde. Se pregunta desde que haya dos, o desde que una
+ * tenga nombre propio.
+ */
+export function hayQueElegirPresentacion(sel) {
+  const lista = presentacionesDelPlato(sel);
+  return lista.length > 1 || lista.some((x) => x.nombre);
+}
+
 /** Mayúscula solo en la primera letra, sin gritarle al cliente. */
 export const capitalizar = (t) => {
   const s = (t || "").trim();

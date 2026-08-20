@@ -1,4 +1,4 @@
-import { MAX_PRESENTACIONES, presentacionesDe } from "../lib/menu";
+import { MAX_PRESENTACIONES } from "../lib/menu";
 import { uid } from "../lib/negocio";
 import CampoFoto from "./CampoFoto.jsx";
 
@@ -15,7 +15,18 @@ import CampoFoto from "./CampoFoto.jsx";
  * @param {(presentaciones: object[]) => void} props.onCambio
  */
 export default function Presentaciones({ fila, onCambio }) {
-  const lista = presentacionesDe(fila);
+  /**
+   * La lista tal como está guardada, sin limpiar.
+   *
+   * A propósito NO se usa `presentacionesDe` aquí: esa recorta los espacios y
+   * descarta las filas todavía vacías, y mientras se escribe eso se siente
+   * como que el campo se borra solo. Aquí manda lo que el dueño está tecleando.
+   */
+  const lista = Array.isArray(fila.presentaciones) && fila.presentaciones.length
+    ? fila.presentaciones
+    : fila.foto
+    ? [{ id: "base", nombre: "", foto: fila.foto, precio: 0 }]
+    : [];
 
   const cambiar = (id, campo, valor) =>
     onCambio(lista.map((p) => (p.id === id ? { ...p, [campo]: valor } : p)));

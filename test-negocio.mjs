@@ -589,6 +589,17 @@ chk10('La fila vieja con una foto suelta sigue sirviendo',
 chk10('  y queda sin nombre', presentacionesDe({ id: 'x', foto: 'fVieja' })[0].nombre, '');
 chk10('Sin fotos no hay presentaciones', presentacionesDe({ id: 'x', nombre: 'Carne' }).length, 0);
 
+import { hayQueElegirPresentacion } from './src/lib/carta.js';
+chk10('Con dos formas si hay que elegir',
+  hayQueElegirPresentacion({ proteinas: [conPresenta] }), true);
+chk10('Con una sola sin nombre no se pregunta',
+  hayQueElegirPresentacion({ proteinas: [{ id: 'x', nombre: 'Carne', foto: 'fVieja' }] }), false);
+chk10('  pero si tiene nombre si',
+  hayQueElegirPresentacion({
+    proteinas: [{ id: 'x', nombre: 'Carne', presentaciones: [{ id: 'a', nombre: 'Con arroz', foto: 'f' }] }],
+  }), true);
+chk10('Sin fotos tampoco se pregunta', hayQueElegirPresentacion({ proteinas: [] }), false);
+
 chk10('El armador ofrece las del plato',
   presentacionesDelPlato({ proteinas: [conPresenta] }).length, 2);
 chk10('El plato de la casa manda sobre la proteina',

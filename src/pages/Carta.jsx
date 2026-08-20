@@ -23,6 +23,7 @@ import {
   fotosSugeridas,
   hayPlato,
   limpiarPlato,
+  hayQueElegirPresentacion,
   precioPlato,
   presentacionesDelPlato,
   resumenPlato,
@@ -315,7 +316,7 @@ export default function Carta() {
             </div>
           )}
 
-          {presentacionesDelPlato(borrador).length > 0 && (
+          {hayQueElegirPresentacion(borrador) && (
             <>
               <p className="muted" style={{ fontSize: 12, margin: "0 0 8px" }}>
                 🍽️ CÓMO SE SIRVE HOY{" "}

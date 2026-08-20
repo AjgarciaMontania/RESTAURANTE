@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { doc, getDoc, onSnapshot, setDoc } from "firebase/firestore";
 import { db, hoy } from "../firebase";
 import {
@@ -22,11 +22,25 @@ export default function MenuFijo() {
   /** Fila cuyo panel de foto está abierto: "proteinas:ab12". */
   const [fotoAbierta, setFotoAbierta] = useState("");
 
+  /**
+   * Lo que falta por mandar a Firestore.
+   *
+   * Escribir dispara un guardado por tecla, y la respuesta del servidor llega
+   * con lo de hace dos letras y pisa lo que se acaba de escribir. Por eso se
+   * espera un momento antes de mandar, y mientras haya algo pendiente lo local
+   * manda sobre lo que llegue de la nube.
+   */
+  const pendiente = useRef(null);
+  const temporizador = useRef(null);
+
   useEffect(() => {
     const t = setTimeout(() => setCargando(false), 5000);
     const off = onSnapshot(
       doc(db, "menus", MENU_ID),
       async (snap) => {
+        // Se está escribiendo: no se pisa lo que el dueño acaba de teclear.
+        if (pendiente.current) return;
+
         if (snap.exists() && !menuVacio(snap.data())) {
           setMenu({ ...MENU_VACIO, ...snap.data() });
         } else {
@@ -55,15 +69,36 @@ export default function MenuFijo() {
     };
   }, []);
 
-  const guardar = async (siguiente) => {
+  /** Guarda en la pantalla al instante y en la nube un momento después. */
+  const guardar = (siguiente) => {
     setMenu(siguiente);
-    try {
-      await setDoc(doc(db, "menus", MENU_ID), siguiente, { merge: true });
-    } catch (e) {
-      console.error(e);
-      alert("No se pudo guardar. Revisa la conexión.");
-    }
+    pendiente.current = siguiente;
+
+    clearTimeout(temporizador.current);
+    temporizador.current = setTimeout(async () => {
+      const datos = pendiente.current;
+      try {
+        await setDoc(doc(db, "menus", MENU_ID), datos, { merge: true });
+        if (pendiente.current === datos) pendiente.current = null;
+      } catch (e) {
+        console.error(e);
+        pendiente.current = null;
+        alert("No se pudo guardar. Revisa la conexión.");
+      }
+    }, 700);
   };
+
+  // Si se sale de la pestaña con algo a medio guardar, se manda de una.
+  useEffect(
+    () => () => {
+      if (!pendiente.current) return;
+      clearTimeout(temporizador.current);
+      setDoc(doc(db, "menus", MENU_ID), pendiente.current, { merge: true }).catch((e) =>
+        console.error("No se alcanzó a guardar el menú:", e)
+      );
+    },
+    []
+  );
 
   const agregar = (key) =>
     guardar({ ...menu, [key]: [...menu[key], { id: uid(), nombre: "", precio: 0 }] });
