@@ -551,6 +551,23 @@ chk10('Dos en el bloque de especiales', partido.especial.length, 2);
 chk10('Sin platos no rompe', separarPlatos().corriente.length, 0);
 
 
+// --- Las columnas del TV: una sola medida de tarjeta para los tres bloques ---
+import { COLS_MAX, COLS_MIN, columnasCarta } from './src/lib/carta.js';
+
+const grupoDe = (c, e, m) => ({
+  corriente: Array.from({ length: c }, (_, i) => ({ id: 'c' + i })),
+  especial: Array.from({ length: e }, (_, i) => ({ id: 'e' + i })),
+  merienda: Array.from({ length: m }, (_, i) => ({ id: 'm' + i })),
+});
+
+chk10('Manda el bloque mas lleno', columnasCarta(grupoDe(3, 6, 2), 5), 6);
+chk10('  aunque el mas lleno sea el del dia', columnasCarta(grupoDe(5, 1, 1), 5), 5);
+chk10('  las meriendas cuentan solo la tanda', columnasCarta(grupoDe(2, 2, 20), 5), 5);
+chk10('Nunca menos del minimo', columnasCarta(grupoDe(1, 0, 0), 5), COLS_MIN);
+chk10('Nunca mas del maximo', columnasCarta(grupoDe(12, 0, 0), 5), COLS_MAX);
+chk10('Carta vacia no rompe', columnasCarta(), COLS_MIN);
+
+
 // --- La foto se sube una vez en el menu fijo y sale sola en la carta ---
 import { fotosSugeridas } from './src/lib/carta.js';
 

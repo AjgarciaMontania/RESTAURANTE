@@ -5,6 +5,7 @@ import { PRECIOS_DEF, money } from "../lib/negocio";
 import { MENU_ID, MENU_VACIO } from "../lib/menu";
 import {
   BLOQUES,
+  columnasCarta,
   platosDeMeriendas,
   precioPlato,
   resumenPlato,
@@ -32,7 +33,7 @@ const MAX_ESCALA = 3;
 const PASO = 0.05;
 
 /** Cuántas meriendas se muestran juntas en cada turno. */
-const POR_LOTE = 4;
+const POR_LOTE = 5;
 
 /**
  * Cuánto dura cada tanda de meriendas en pantalla.
@@ -102,8 +103,11 @@ export default function CartaTV() {
   const conContenido = BLOQUES.filter((b) => grupos[b.clave].length > 0);
   const hayVarios = conContenido.length > 1;
   const vacia = conContenido.length === 0;
-  /** En cuántas tandas de a cuatro se reparten las meriendas. */
+  /** En cuántas tandas se reparten las meriendas. */
   const lotes = Math.max(1, Math.ceil(cuantasMeriendas / POR_LOTE));
+
+  /** Cuántas tarjetas caben de ancho, iguales para los tres bloques. */
+  const columnas = columnasCarta(grupos, POR_LOTE);
 
   /** Igual que en cocina: se reduce el tamaño hasta que todo quepa. */
   useLayoutEffect(() => {
@@ -199,7 +203,7 @@ export default function CartaTV() {
           <p>Los platos de hoy aparecen aquí solos, sin recargar</p>
         </div>
       ) : (
-        <div className="carta-bloques">
+        <div className="carta-bloques" style={{ "--cols": String(columnas) }}>
           {BLOQUES.map((b) => {
             const delBloque = grupos[b.clave];
             if (!delBloque.length) return null;

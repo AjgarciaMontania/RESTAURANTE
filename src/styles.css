@@ -732,13 +732,19 @@ textarea {
    platos apretados contra la cabecera con medio TV en verde. */
 .tv.carta { display: flex; flex-direction: column; }
 .carta-grid {
-  display: grid; gap: 1.1em;
-  /* El mínimo va en em a propósito: cuando el ajuste automático encoge la
-     letra, caben más columnas y todo el bloque baja de alto. Con auto-fit las
-     columnas vacías se colapsan y el alto deja de poder corregirse. */
-  /* Con tope de ancho todas las tarjetas miden lo mismo, sean del menú del
-     día, especiales o meriendas: es lo que mantiene la carta pareja. */
-  grid-template-columns: repeat(auto-fill, minmax(17em, 26em));
+  --hueco: .9em;
+  display: grid; gap: var(--hueco);
+  /* Ancho de tarjeta calculado, no negociado: el bloque más lleno del día
+     reparte el ancho de la pantalla en `--cols` columnas, y ese mismo ancho lo
+     usan los tres bloques. Así una merienda mide igual que un almuerzo, y el
+     ajuste automático solo cambia el tamaño de la letra —nunca el número de
+     columnas—, que era lo que hacía saltar el tablero y dejaba media pantalla
+     en verde. */
+  /* `auto-fit` y no `auto-fill`: acá el ancho de columna es fijo, así que
+     colapsar las columnas vacías no lo altera, y sí deja centrar el bloque
+     que no llena el renglón. */
+  grid-template-columns:
+    repeat(auto-fit, calc((100% - (var(--cols, 4) - 1) * var(--hueco)) / var(--cols, 4)));
   justify-content: start;
   align-items: stretch;
 }
@@ -747,10 +753,24 @@ textarea {
   box-shadow: 0 .6em 1.6em rgba(0, 0, 0, .3);
   display: flex; flex-direction: column;
 }
-/* Un plato solo no se estira de lado a lado del TV. */
-.carta-grid > .plato:only-child { max-width: 34em; margin: 0 auto; }
+/* Un plato solo ya no necesita tope: la columna calculada se lo pone. */
 
-.plato-foto { position: relative; aspect-ratio: 5 / 4; background: #14382c; }
+/* La foto siempre ocupa el mismo recuadro, sea la imagen apaisada o parada.
+   `min-height: 0` es imprescindible: sin él, al ser hija de un flex en
+   columna, la altura natural de la imagen se vuelve el mínimo de la caja y el
+   `aspect-ratio` se ignora — las fotos paradas crecían y dejaban a las
+   apaisadas con un hueco enorme entre el nombre y el precio. */
+.plato-foto {
+  position: relative; aspect-ratio: 5 / 4; background: #14382c;
+  flex: none; min-height: 0; overflow: hidden;
+}
+/* En el TV el alto de la foto se mide en em, no contra el ancho de la
+   columna. Es lo que le devuelve el freno al ajuste automático: si el alto
+   dependiera del ancho, achicar la letra no bajaría el alto del tablero y la
+   carta se desbordaría por abajo. De paso todas las fotos quedan idénticas. */
+@media (min-width: 721px) {
+  .plato-foto { aspect-ratio: auto; height: 15em; }
+}
 .plato-foto > img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .plato-sinfoto { display: grid; place-items: center; height: 100%; }
 .plato-sinfoto svg { width: 4.5em; height: 4.5em; opacity: .6; }
@@ -763,21 +783,23 @@ textarea {
 .plato-foto2 img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .plato-foto2 .plato-sinfoto svg { width: 2em; height: 2em; }
 
-.plato-cuerpo { padding: .75em .9em .9em; display: flex; flex-direction: column; flex: 1; }
+.plato-cuerpo { padding: .6em .8em .7em; display: flex; flex-direction: column; flex: 1; }
+/* La letra pesa más que la foto: desde la mesa lo que se lee es el nombre y
+   el precio, no el detalle de la imagen. */
 .plato-cuerpo h2 {
   margin: 0 0 .3em; font-family: var(--serif); font-weight: 400;
-  font-size: 1.55em; line-height: 1.15; color: #1f5c45; letter-spacing: .01em;
+  font-size: 2em; line-height: 1.15; color: #1f5c45; letter-spacing: .01em;
   overflow-wrap: anywhere;
 }
 .plato-cuerpo ul { margin: 0; padding: 0; list-style: none; display: grid; gap: .2em; }
-.plato-cuerpo li { font-size: 1em; font-weight: 600; color: #4c4034; overflow-wrap: anywhere; }
+.plato-cuerpo li { font-size: 1.2em; font-weight: 600; color: #4c4034; overflow-wrap: anywhere; }
 .plato-nota {
   margin: .45em 0 0; font-family: var(--serif); font-style: italic;
   font-size: .95em; color: #8b7d6b;
 }
 .plato-precio {
   margin-top: auto; padding-top: .55em;
-  font-size: 1.65em; font-weight: 800; color: #b98b2e;
+  font-size: 2.1em; font-weight: 800; color: #b98b2e;
   font-variant-numeric: tabular-nums;
 }
 
@@ -812,12 +834,12 @@ textarea {
 /* ---- Carta: los dos bloques del comedor ---- */
 /* Los bloques bajan uno debajo del otro: menú del día, especiales y, de
    último, las meriendas. */
-.carta-bloques { display: flex; flex-direction: column; gap: 1.4em; margin: auto 0; }
+.carta-bloques { display: flex; flex-direction: column; gap: 1em; margin: auto 0; }
 .carta-bloque { min-width: 0; }
 .carta-bloques .carta-grid { margin: 0; }
 
 .carta-rotulo {
-  margin: 0 0 .7em; padding-bottom: .3em;
+  margin: 0 0 .4em; padding-bottom: .3em;
   font-family: var(--serif); font-weight: 400;
   font-size: 1.5em; letter-spacing: .09em; text-transform: uppercase;
   color: #e9c87d; position: relative;
@@ -889,8 +911,8 @@ textarea {
 
 /* Cómo se sirve: distingue dos tarjetas del mismo plato */
 .plato-presenta {
-  margin: -.15em 0 .35em; font-weight: 700;
-  font-size: .95em; color: #a8631a; letter-spacing: .01em;
+  margin: -.1em 0 .35em; font-weight: 700;
+  font-size: 1.25em; line-height: 1.2; color: #a8631a; letter-spacing: .01em;
 }
 .plato-texto .presenta { color: #a8631a; font-weight: 700; font-size: 13px; }
 
@@ -909,10 +931,6 @@ textarea {
    Salen por tandas de cuatro, turnándose. Usan la misma rejilla y el mismo
    tope de ancho que los demás bloques: la tarjeta de una merienda mide igual
    que la de un almuerzo o la de un especial. */
-/* La regla del plato solo no aplica: la tanda va alineada a la izquierda,
-   aunque en la última quede una sola merienda. */
-.carta-bloque.merienda .carta-grid > .plato:only-child { max-width: none; margin: 0; }
-
 /* La entrada de cada tanda: aparece subiendo y aclarándose. */
 @keyframes entraMerienda {
   from { opacity: 0; transform: translateY(.7em) scale(.98); }
@@ -924,9 +942,18 @@ textarea {
 .plato.merienda:nth-child(2) { animation-delay: .08s; }
 .plato.merienda:nth-child(3) { animation-delay: .16s; }
 .plato.merienda:nth-child(4) { animation-delay: .24s; }
+.plato.merienda:nth-child(5) { animation-delay: .32s; }
+
+
+/* La tanda va centrada en la pantalla: son pocas y contra la izquierda
+   dejaban medio TV en verde. El rótulo y los puntos se centran con ellas para
+   que el bloque se lea como uno solo. */
+.carta-bloque.merienda .carta-grid { justify-content: center; }
+.carta-bloque.merienda .carta-rotulo { text-align: center; }
+.carta-bloque.merienda .carta-rotulo::after { left: 50%; transform: translateX(-50%); }
 
 /* Los puntos dicen cuántas tandas hay y en cuál va */
-.carta-puntos { display: flex; gap: .45em; margin-top: .7em; }
+.carta-puntos { display: flex; gap: .45em; margin-top: .7em; justify-content: center; }
 .carta-puntos span {
   width: .5em; height: .5em; border-radius: 50%;
   background: rgba(233, 200, 125, .3);
