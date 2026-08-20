@@ -101,6 +101,46 @@ export function hayQueElegirPresentacion(sel) {
   return lista.length > 1 || lista.some((x) => x.nombre);
 }
 
+/**
+ * Qué presentaciones quedaron anunciadas hoy en el TV, por plato del catálogo.
+ *
+ * El talonario se alimenta de aquí y no del catálogo completo: si de cinco
+ * formas de la carne de res solo publicaste dos, el mesero solo puede tomar
+ * esas dos. Lo que ve el cliente en la pantalla es exactamente lo que se puede
+ * pedir.
+ *
+ * @param {object[]} platos  La carta de hoy
+ * @returns {Map<string, {id,nombre,foto,precio}[]>} id de la fila -> formas
+ */
+export function presentacionesEnCarta(platos = []) {
+  const mapa = new Map();
+
+  for (const p of platos) {
+    if (!p?.presentacion?.id) continue;
+    const clave = origenPresentaciones(p)?.id;
+    if (!clave) continue;
+
+    const lista = mapa.get(clave) || [];
+    if (!lista.some((x) => x.id === p.presentacion.id)) lista.push(p.presentacion);
+    mapa.set(clave, lista);
+  }
+
+  return mapa;
+}
+
+/**
+ * Las formas de servir que el mesero puede tomar para lo que lleva armado.
+ *
+ * Manda la carta de hoy. Los días que no se arme carta, se ofrece el catálogo
+ * completo para no dejar al mesero sin poder trabajar.
+ */
+export function presentacionesParaPedir(sel, enCarta) {
+  const origen = origenPresentaciones(sel);
+  if (!origen) return [];
+  const publicadas = enCarta?.get(origen.id);
+  return publicadas?.length ? publicadas : presentacionesDe(origen);
+}
+
 /** Mayúscula solo en la primera letra, sin gritarle al cliente. */
 export const capitalizar = (t) => {
   const s = (t || "").trim();

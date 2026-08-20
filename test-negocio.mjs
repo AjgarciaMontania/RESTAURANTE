@@ -628,6 +628,63 @@ chk10('Se guarda sin undefined',
 chk10('  con su nombre', limpiarPlato(conAgua).presentacion.nombre, 'Con aguacate');
 chk10('Sin presentacion queda en null', limpiarPlato(completo).presentacion, null);
 
+
+// --- La presentacion viaja del TV al talonario ---
+import { presentacionesEnCarta, presentacionesParaPedir } from './src/lib/carta.js';
+
+const carne = {
+  id: 'res', nombre: 'Carne de res',
+  presentaciones: [
+    { id: 'f1', nombre: 'Con aguacate', foto: 'fa', precio: 12000 },
+    { id: 'f2', nombre: 'Con platano', foto: 'fp', precio: 0 },
+    { id: 'f3', nombre: 'Sola', foto: 'fs', precio: 0 },
+    { id: 'f4', nombre: 'Con papa', foto: 'fpa', precio: 0 },
+    { id: 'f5', nombre: 'Con yuca', foto: 'fy', precio: 0 },
+  ],
+};
+
+// De cinco formas, hoy solo se publicaron dos
+const cartaDeHoy = [
+  { deLaCasa: carne, presentacion: carne.presentaciones[0], proteinas: [] },
+  { deLaCasa: carne, presentacion: carne.presentaciones[1], proteinas: [] },
+];
+const mapa = presentacionesEnCarta(cartaDeHoy);
+
+chk10('La carta publica dos formas', mapa.get('res').length, 2);
+chk10('El talonario ofrece solo esas dos',
+  presentacionesParaPedir({ deLaCasa: carne }, mapa).length, 2);
+chk10('  y son las publicadas',
+  presentacionesParaPedir({ deLaCasa: carne }, mapa).map((x) => x.nombre).join(', '),
+  'Con aguacate, Con platano');
+chk10('Sin carta se ofrecen las cinco',
+  presentacionesParaPedir({ deLaCasa: carne }, new Map()).length, 5);
+chk10('Un plato sin presentaciones no ofrece nada',
+  presentacionesParaPedir({ proteinas: [{ id: 'z', nombre: 'Pechuga' }] }, mapa).length, 0);
+chk10('Una carta sin presentaciones no arma mapa',
+  presentacionesEnCarta([{ proteinas: [carne] }]).size, 0);
+
+// La forma llega a la comanda y al cobro
+const conAguacate = armarLinea({
+  caldo: { id: 'c', nombre: 'Pescado' }, proteinas: [carne],
+  presentacion: carne.presentaciones[0], precios: PRECIOS_DEF,
+});
+chk10('La comanda dice como se sirve', conAguacate.descripcion,
+  'CALDO DE PESCADO + CARNE DE RES · CON AGUACATE');
+chk10('  y cobra el precio anunciado', conAguacate.precioUnit, 12000);
+chk10('  que queda bloqueado', conAguacate.fijo, true);
+
+const conPlatano = armarLinea({
+  caldo: { id: 'c', nombre: 'Pescado' }, proteinas: [carne],
+  presentacion: carne.presentaciones[1], precios: PRECIOS_DEF,
+});
+chk10('Sin precio propio cobra el almuerzo', conPlatano.precioUnit, 10000);
+chk10('  pero igual dice como se sirve',
+  conPlatano.descripcion.includes('· CON PLATANO'), true);
+
+chk10('Sin presentacion la linea no cambia',
+  armarLinea({ caldo: { id: 'c', nombre: 'Pescado' }, proteinas: [carne], precios: PRECIOS_DEF })
+    .descripcion, 'CALDO DE PESCADO + CARNE DE RES');
+
 console.log(f10 ? `\n❌ ${f10} fallo(s) en carta` : '\n✅ Carta: todo pasa');
 
 // ---------------------------------------------------------------

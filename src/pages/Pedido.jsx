@@ -24,6 +24,7 @@ import {
   totalLineas,
   uid,
 } from "../lib/negocio";
+import { presentacionesEnCarta, presentacionesParaPedir } from "../lib/carta";
 import SelectorCliente from "../components/SelectorCliente.jsx";
 import { usePlegado } from "../lib/plegar.js";
 
@@ -68,7 +69,11 @@ export default function Pedido() {
   const [protSel, setProtSel] = useState([]);
   const [huevoSel, setHuevoSel] = useState([]);
   const [especial, setEspecial] = useState(false);
+  /** Cómo se sirve el seco, tal como se anunció hoy en el TV. */
+  const [presentaSel, setPresentaSel] = useState(null);
   const [cant, setCant] = useState(1);
+  /** La carta que está proyectada hoy, para no ofrecer lo que no se anunció. */
+  const [cartaHoy, setCartaHoy] = useState([]);
 
   const [enviando, setEnviando] = useState(false);
   const [toast, setToast] = useState("");
@@ -116,6 +121,23 @@ export default function Pedido() {
     []
   );
 
+  useEffect(
+    () =>
+      onSnapshot(query(collection(db, "platos"), where("fecha", "==", fecha)), (s) =>
+        setCartaHoy(s.docs.map((d) => d.data()))
+      ),
+    [fecha]
+  );
+
+  /**
+   * Lo que el TV está anunciando hoy, por plato.
+   *
+   * El talonario solo ofrece esto: si de cinco formas de la carne de res
+   * publicaste dos, el mesero solo puede tomar esas dos. Lo que ve el cliente
+   * en la pantalla es exactamente lo que se puede pedir.
+   */
+  const enCarta = useMemo(() => presentacionesEnCarta(cartaHoy), [cartaHoy]);
+
   // Solo lo disponible hoy. Si nadie marcó nada, se muestra el catálogo
   // completo con un aviso: mejor eso a dejar al mesero sin poder trabajar.
   const { menu, sinSeleccion } = useMemo(() => menuDelDia(fijo, diario), [fijo, diario]);
@@ -130,6 +152,17 @@ export default function Pedido() {
   // Fijas: no pasan por el menú de hoy, están disponibles siempre.
   const meriendas = conNombre(menu.meriendas);
 
+  /** Formas de servir el seco que hoy están anunciadas. */
+  const formas = useMemo(
+    () => presentacionesParaPedir({ proteinas: protSel }, enCarta).filter((x) => x.nombre),
+    [protSel, enCarta]
+  );
+
+  // Si cambia la proteína, la forma escogida deja de aplicar.
+  useEffect(() => {
+    setPresentaSel((x) => (x && formas.some((f) => f.id === x.id) ? x : null));
+  }, [formas]);
+
   // El huevo cuenta como una proteína más para el precio, pero en la
   // descripción va aparte y rotulado, para que en la cocina no se confunda.
   const previa = useMemo(
@@ -141,10 +174,14 @@ export default function Pedido() {
         proteinas: protSel,
         huevos: huevoSel,
         especial,
+        presentacion: presentaSel,
         precios,
       }),
-    [caldoSel, sopaSel, principioSel, protSel, huevoSel, especial, precios]
+    [caldoSel, sopaSel, principioSel, protSel, huevoSel, especial, presentaSel, precios]
   );
+
+  /** Con formas anunciadas hay que decir cuál: si no, la comanda queda coja. */
+  const faltaForma = formas.length > 0 && !presentaSel;
 
   /**
    * El empaque de "para llevar" no se agrega a mano: se recalcula solo cada
@@ -191,11 +228,12 @@ export default function Pedido() {
     setProtSel([]);
     setHuevoSel([]);
     setEspecial(false);
+    setPresentaSel(null);
     setCant(1);
   };
 
   const agregarAlmuerzo = () => {
-    if (!previa) return;
+    if (!previa || faltaForma) return;
     // La receta viaja con el renglón: es lo que permite repetirlo o corregirlo
     // después, incluso con el pedido ya enviado a la cocina.
     const compo = receta({
@@ -205,6 +243,7 @@ export default function Pedido() {
       proteinas: protSel,
       huevos: huevoSel,
       especial,
+      presentacion: presentaSel,
     });
     setItems((s) => [...s, { id: uid(), cant, ...previa, compo }]);
     limpiarArmador();
@@ -219,6 +258,7 @@ export default function Pedido() {
     setProtSel(c.proteinas || []);
     setHuevoSel(c.huevos || []);
     setEspecial(!!c.especial);
+    setPresentaSel(c.presentacion || null);
     setCant(1);
     armador.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
@@ -241,15 +281,22 @@ export default function Pedido() {
    * suba la cantidad en vez de abrir otro renglón: pedir tres empanadas es lo
    * normal, tener tres renglones de empanada no.
    */
-  const agregarSuelto = (fila, tipo, { rotulo = "", acumula = false } = {}) => {
-    const descripcion = (rotulo ? `${rotulo}: ` : "") + fila.nombre.toUpperCase();
+  const agregarSuelto = (fila, tipo, { rotulo = "", acumula = false, presentacion = null } = {}) => {
+    const base = (rotulo ? `${rotulo}: ` : "") + fila.nombre.toUpperCase();
+    // La forma de servir va pegada al nombre, igual que se anuncia en el TV.
+    const descripcion = presentacion?.nombre
+      ? `${base} · ${presentacion.nombre.toUpperCase()}`
+      : base;
+    // El precio de la presentación manda: es el que vio el cliente.
+    const precioUnit = Number(presentacion?.precio) || Number(fila.precio) || 0;
+
     const nueva = {
       id: uid(),
       cant: 1,
       tipo,
       descripcion,
-      precioUnit: Number(fila.precio) || 0,
-      fijo: Number(fila.precio) > 0,
+      precioUnit,
+      fijo: precioUnit > 0,
     };
 
     setItems((s) => {
@@ -622,6 +669,27 @@ export default function Pedido() {
             </>
           )}
 
+          {formas.length > 0 && (
+            <>
+              <p className="muted" style={{ fontSize: 12, margin: "0 0 8px" }}>
+                🍽️ CÓMO SE SIRVE{" "}
+                <span style={{ opacity: .7 }}>(lo que está en la pantalla del comedor)</span>
+              </p>
+              <div className="chips" style={{ marginBottom: 14 }}>
+                {formas.map((f) => (
+                  <button
+                    key={f.id}
+                    className={"chip" + (presentaSel?.id === f.id ? " on" : "")}
+                    onClick={() => setPresentaSel(presentaSel?.id === f.id ? null : f)}
+                  >
+                    {f.nombre}
+                    {f.precio > 0 && <span className="p">{money(f.precio)}</span>}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+
           <div className="seg" style={{ marginBottom: 12 }}>
             <button className={!especial ? "on" : ""} onClick={() => setEspecial(false)}>
               Normal
@@ -637,8 +705,17 @@ export default function Pedido() {
               <span>{cant}</span>
               <button onClick={() => setCant((c) => c + 1)}>+</button>
             </div>
-            <button className="btn primary" style={{ flex: 1 }} disabled={!previa} onClick={agregarAlmuerzo}>
-              {previa ? `Agregar · ${money(previa.precioUnit * cant)}` : "Elige caldo o proteína"}
+            <button
+              className="btn primary"
+              style={{ flex: 1 }}
+              disabled={!previa || faltaForma}
+              onClick={agregarAlmuerzo}
+            >
+              {!previa
+                ? "Elige caldo o proteína"
+                : faltaForma
+                ? "Falta decir cómo se sirve"
+                : `Agregar · ${money(previa.precioUnit * cant)}`}
             </button>
           </div>
 
@@ -667,11 +744,37 @@ export default function Pedido() {
         <div className="card">
           <h2>⭐ Especiales</h2>
           <div className="chips">
-            {especiales.map((a) => (
-              <button key={a.id} className="chip" onClick={() => agregarSuelto(a, "especial")}>
-                {a.nombre} <span className="p">{money(a.precio)}</span>
-              </button>
-            ))}
+            {especiales.flatMap((a) => {
+              // Se abre en una opción por cada forma que el TV esté anunciando.
+              const suyas = presentacionesParaPedir({ deLaCasa: a }, enCarta).filter(
+                (x) => x.nombre
+              );
+
+              if (!suyas.length)
+                return [
+                  <button
+                    key={a.id}
+                    className="chip"
+                    onClick={() => agregarSuelto(a, "especial")}
+                  >
+                    {a.nombre} <span className="p">{money(a.precio)}</span>
+                  </button>,
+                ];
+
+              return suyas.map((f) => (
+                <button
+                  key={a.id + ":" + f.id}
+                  className="chip conforma"
+                  onClick={() => agregarSuelto(a, "especial", { presentacion: f })}
+                >
+                  <span className="txt">
+                    {a.nombre}
+                    <em className="forma">{f.nombre}</em>
+                  </span>
+                  <span className="p">{money(f.precio || a.precio)}</span>
+                </button>
+              ));
+            })}
           </div>
         </div>
       )}

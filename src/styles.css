@@ -887,3 +887,14 @@ textarea {
   font-size: .95em; color: #a8631a; letter-spacing: .01em;
 }
 .plato-texto .presenta { color: #a8631a; font-weight: 700; font-size: 13px; }
+
+/* La forma de servir, dentro del chip del especial: el nombre arriba y
+   debajo cómo se sirve, para que no se parta en mitad de la palabra. */
+.chip.conforma .txt {
+  display: flex; flex-direction: column; align-items: flex-start;
+  line-height: 1.2; min-width: 0;
+}
+.chip.conforma .forma {
+  font-style: normal; font-size: 12px; font-weight: 700; color: #a8631a;
+}
+.chip.on .forma { color: #f3d79a; }

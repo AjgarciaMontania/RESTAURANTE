@@ -69,14 +69,34 @@ export const uid = () => Math.random().toString(36).slice(2, 9);
 export const soloDatos = (x) =>
   x ? { id: x.id ?? "", nombre: x.nombre ?? "", precio: Number(x.precio) || 0 } : null;
 
+/** Cómo se sirve el plato hoy, tal como se anunció en el TV. */
+export const soloPresentacion = (x) =>
+  x
+    ? {
+        id: x.id ?? "",
+        nombre: (x.nombre ?? "").trim(),
+        foto: x.foto ?? "",
+        precio: Number(x.precio) || 0,
+      }
+    : null;
+
 /** La receta de un renglón, para poder rearmarlo en el talonario. */
-export const receta = ({ caldo, sopa, principio, proteinas = [], huevos = [], especial }) => ({
+export const receta = ({
+  caldo,
+  sopa,
+  principio,
+  proteinas = [],
+  huevos = [],
+  especial,
+  presentacion,
+}) => ({
   caldo: soloDatos(caldo),
   sopa: soloDatos(sopa),
   principio: soloDatos(principio),
   proteinas: proteinas.map(soloDatos),
   huevos: huevos.map(soloDatos),
   especial: !!especial,
+  presentacion: soloPresentacion(presentacion),
 });
 
 /**
@@ -108,9 +128,29 @@ export function armarLinea({
   proteinas = [],
   huevos = [],
   especial,
+  presentacion,
   precios,
 }) {
   const p = { ...PRECIOS_DEF, ...precios };
+
+  /**
+   * Cómo se sirve, pegado al nombre del seco: "CARNE DE RES · CON AGUACATE".
+   * Es lo mismo que anuncia el TV, así el cliente pide lo que ve.
+   */
+  const txtPresenta = presentacion?.nombre?.trim()
+    ? ` · ${presentacion.nombre.trim().toUpperCase()}`
+    : "";
+
+  /**
+   * El precio de la presentación manda siempre.
+   *
+   * Si el TV anuncia la carne con aguacate en $12.000, eso es lo que paga el
+   * cliente, lleve caldo o no. Lo que ve es lo que se le cobra.
+   */
+  const conPresentacion = (linea) => {
+    const propio = Number(presentacion?.precio) || 0;
+    return propio > 0 ? { ...linea, precioUnit: propio, fijo: true } : linea;
+  };
 
   // Caldo y sopa cumplen el mismo papel: el caldo es de desayuno y la sopa de
   // almuerzo, pero se cobran igual. Son excluyentes entre sí.
@@ -130,7 +170,7 @@ export function armarLinea({
   const txtLiquido = hayLiquido
     ? `${esSopa ? "SOPA" : "CALDO"} DE ${soloSabor(liquido.nombre).toUpperCase()}`
     : "";
-  const txtProt = nombresProt.join(", ").toUpperCase();
+  const txtProt = nombresProt.join(", ").toUpperCase() + txtPresenta;
   const txtPrincipio = hayPrincipio
     ? `PRINCIPIO: ${soloPrincipio(principio.nombre).toUpperCase()}`
     : "";
@@ -144,27 +184,27 @@ export function armarLinea({
 
   // Líquido + algo -> UN solo almuerzo
   if (hayLiquido && hayAcompanamiento) {
-    return {
+    return conPresentacion({
       tipo: especial ? "almuerzo_especial" : "almuerzo_normal",
       descripcion: [txtLiquido, txtProt, txtPrincipio, txtHuevo].filter(Boolean).join(" + "),
       principio: txtPrincipio,
       huevos: txtHuevo,
       precioUnit: especial ? p.almuerzoEspecial : p.almuerzoNormal,
       fijo: especial ? p.almuerzoEspecialFijo : p.almuerzoNormalFijo,
-    };
+    });
   }
 
   // Solo el líquido (si trae precio propio en el menú, ese manda)
   if (hayLiquido) {
     const propio = Number(liquido.precio) > 0 ? Number(liquido.precio) : null;
-    return {
+    return conPresentacion({
       tipo: esSopa ? "solo_sopa" : "solo_caldo",
       descripcion: txtLiquido,
       principio: "",
       huevos: "",
       precioUnit: propio ?? p.soloCaldo,
       fijo: propio ? true : p.soloCaldoFijo,
-    };
+    });
   }
 
   // Sin líquido: el seco, con lo que lo acompañe
@@ -173,7 +213,7 @@ export function armarLinea({
       ? Number(acompanan[0].precio)
       : null;
 
-  return {
+  return conPresentacion({
     tipo: "solo_seco",
     descripcion: [hayProt ? `SECO: ${txtProt}` : "", txtPrincipio, txtHuevo]
       .filter(Boolean)
@@ -182,7 +222,7 @@ export function armarLinea({
     huevos: txtHuevo,
     precioUnit: propio ?? p.soloSeco,
     fijo: propio ? true : p.soloSecoFijo,
-  };
+  });
 }
 
 export const TIPO_DESECHABLE = "desechable";
