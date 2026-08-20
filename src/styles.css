@@ -733,19 +733,20 @@ textarea {
 .tv.carta { display: flex; flex-direction: column; }
 .carta-grid {
   --hueco: .9em;
+  /* El ancho de la tarjeta va en em, no en porcentaje de la pantalla. Es la
+     pieza clave: como la foto guarda su proporción contra ese ancho, al
+     achicar la letra se achica la tarjeta y con ella la foto, y el ajuste
+     automático vuelve a tener con qué hacer caber el tablero. Atado a un
+     porcentaje, la foto quedaba de alto fijo y había que recortarla en una
+     franja. Todos los bloques usan la misma medida, así que una merienda
+     mide igual que un almuerzo. */
+  --ancho: 22em;
   display: grid; gap: var(--hueco);
-  /* Ancho de tarjeta calculado, no negociado: el bloque más lleno del día
-     reparte el ancho de la pantalla en `--cols` columnas, y ese mismo ancho lo
-     usan los tres bloques. Así una merienda mide igual que un almuerzo, y el
-     ajuste automático solo cambia el tamaño de la letra —nunca el número de
-     columnas—, que era lo que hacía saltar el tablero y dejaba media pantalla
-     en verde. */
   /* `auto-fit` y no `auto-fill`: acá el ancho de columna es fijo, así que
      colapsar las columnas vacías no lo altera, y sí deja centrar el bloque
      que no llena el renglón. */
-  grid-template-columns:
-    repeat(auto-fit, calc((100% - (var(--cols, 4) - 1) * var(--hueco)) / var(--cols, 4)));
-  justify-content: start;
+  grid-template-columns: repeat(auto-fit, var(--ancho));
+  justify-content: center;
   align-items: stretch;
 }
 .plato {
@@ -763,13 +764,6 @@ textarea {
 .plato-foto {
   position: relative; aspect-ratio: 5 / 4; background: #14382c;
   flex: none; min-height: 0; overflow: hidden;
-}
-/* En el TV el alto de la foto se mide en em, no contra el ancho de la
-   columna. Es lo que le devuelve el freno al ajuste automático: si el alto
-   dependiera del ancho, achicar la letra no bajaría el alto del tablero y la
-   carta se desbordaría por abajo. De paso todas las fotos quedan idénticas. */
-@media (min-width: 721px) {
-  .plato-foto { aspect-ratio: auto; height: 15em; }
 }
 .plato-foto > img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .plato-sinfoto { display: grid; place-items: center; height: 100%; }
@@ -838,15 +832,17 @@ textarea {
 .carta-bloque { min-width: 0; }
 .carta-bloques .carta-grid { margin: 0; }
 
+/* Rótulo centrado sobre su bloque: como las tarjetas van centradas, un
+   encabezado pegado a la izquierda dejaba el bloque descuadrado. */
 .carta-rotulo {
-  margin: 0 0 .4em; padding-bottom: .3em;
+  margin: 0 0 .4em; padding-bottom: .3em; text-align: center;
   font-family: var(--serif); font-weight: 400;
   font-size: 1.5em; letter-spacing: .09em; text-transform: uppercase;
   color: #e9c87d; position: relative;
 }
 .carta-rotulo::after {
-  content: ""; position: absolute; left: 0; bottom: 0;
-  width: 3.2em; height: .13em; background: #d8a94f; border-radius: 2px;
+  content: ""; position: absolute; left: 50%; transform: translateX(-50%);
+  bottom: 0; width: 3.2em; height: .13em; background: #d8a94f; border-radius: 2px;
 }
 .carta-bloque.especial .carta-rotulo { color: #f3d79a; }
 
@@ -944,13 +940,6 @@ textarea {
 .plato.merienda:nth-child(4) { animation-delay: .24s; }
 .plato.merienda:nth-child(5) { animation-delay: .32s; }
 
-
-/* La tanda va centrada en la pantalla: son pocas y contra la izquierda
-   dejaban medio TV en verde. El rótulo y los puntos se centran con ellas para
-   que el bloque se lea como uno solo. */
-.carta-bloque.merienda .carta-grid { justify-content: center; }
-.carta-bloque.merienda .carta-rotulo { text-align: center; }
-.carta-bloque.merienda .carta-rotulo::after { left: 50%; transform: translateX(-50%); }
 
 /* Los puntos dicen cuántas tandas hay y en cuál va */
 .carta-puntos { display: flex; gap: .45em; margin-top: .7em; justify-content: center; }

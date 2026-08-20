@@ -43,31 +43,6 @@ export const BLOQUES = [
   { clave: "merienda", titulo: "Meriendas" },
 ];
 
-/** Cuántas tarjetas caben de ancho en el TV, como mínimo y como máximo. */
-export const COLS_MIN = 3;
-export const COLS_MAX = 6;
-
-/**
- * Cuántas columnas usa la carta del TV, iguales para los tres bloques.
- *
- * Manda el bloque más lleno del día: ese llena la pantalla de lado a lado y
- * los demás quedan más cortos, pero todas las tarjetas miden lo mismo. Sin
- * esto la rejilla acomodaba las columnas sola y una merienda terminaba de otro
- * tamaño que un almuerzo.
- *
- * @param {object} grupos    Los platos ya repartidos por bloque
- * @param {number} porLote   Cuántas meriendas salen juntas
- */
-export function columnasCarta(grupos = {}, porLote = 5) {
-  const cuantos = (k) => (grupos[k] || []).length;
-  const masLleno = Math.max(
-    cuantos("corriente"),
-    cuantos("especial"),
-    Math.min(cuantos("merienda"), porLote)
-  );
-  return Math.min(COLS_MAX, Math.max(COLS_MIN, masLleno));
-}
-
 /** Máximo de fotos por plato: la del seco y la del caldo o la sopa. */
 export const MAX_FOTOS = 2;
 
