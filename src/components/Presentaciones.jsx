@@ -1,4 +1,3 @@
-import { MAX_PRESENTACIONES } from "../lib/menu";
 import { uid } from "../lib/negocio";
 import CampoFoto from "./CampoFoto.jsx";
 
@@ -88,11 +87,12 @@ export default function Presentaciones({ fila, onCambio }) {
         </div>
       ))}
 
-      {lista.length < MAX_PRESENTACIONES && (
-        <button className="btn block ghost" onClick={agregar}>
-          + Agregar presentación
-        </button>
-      )}
+      {/* Sin tope: un plato puede servirse de las formas que sean. Lo único
+          que cambia con muchas es que en el TV las tarjetas se ven más
+          pequeñas, y de eso ya se encarga el ajuste automático. */}
+      <button className="btn block ghost" onClick={agregar}>
+        + Agregar presentación
+      </button>
     </div>
   );
 }

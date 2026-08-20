@@ -54,9 +54,6 @@ export const menuVacio = (m) => vacioEn(m, CLAVES);
 /** ¿Está sin armar el menú de hoy? Las meriendas no cuentan: van siempre. */
 export const diarioVacio = (m) => vacioEn(m, CLAVES_DIARIAS);
 
-/** Cuántas presentaciones puede tener un mismo plato. */
-export const MAX_PRESENTACIONES = 6;
-
 /**
  * Las presentaciones de un plato del catálogo.
  *
