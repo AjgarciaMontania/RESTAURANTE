@@ -898,3 +898,16 @@ textarea {
   font-style: normal; font-size: 12px; font-weight: 700; color: #a8631a;
 }
 .chip.on .forma { color: #f3d79a; }
+
+/* ---- Meriendas en el TV: tarjeta compacta ----
+   Una empanada no necesita la misma foto que un almuerzo, y así el bloque
+   ocupa poco alto y los platos del día se quedan grandes. */
+.carta-bloque.merienda .carta-grid {
+  grid-template-columns: repeat(auto-fill, minmax(13em, 1fr));
+}
+.plato.merienda { flex-direction: row; }
+.plato.merienda .plato-foto { width: 40%; flex: none; aspect-ratio: 1; }
+.plato.merienda .plato-cuerpo { padding: .5em .75em .6em; justify-content: center; }
+.plato.merienda .plato-cuerpo h2 { font-size: 1.2em; margin-bottom: .15em; }
+.plato.merienda .plato-presenta { font-size: .85em; margin: 0 0 .2em; }
+.plato.merienda .plato-precio { font-size: 1.3em; padding-top: .3em; }

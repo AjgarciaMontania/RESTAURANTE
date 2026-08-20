@@ -26,6 +26,7 @@ export const SECCIONES = [
     ph: "Ej: Empanada",
     nota: "siempre disponible",
     conPrecio: true,
+    conFoto: true,
     siempre: true,
   },
 ];

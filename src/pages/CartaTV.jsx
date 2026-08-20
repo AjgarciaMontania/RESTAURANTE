@@ -2,7 +2,14 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { collection, doc, onSnapshot, query, where } from "firebase/firestore";
 import { ZONA, db, hoy, horaColombia, recordar } from "../firebase";
 import { PRECIOS_DEF, money } from "../lib/negocio";
-import { BLOQUES, precioPlato, resumenPlato, separarPlatos } from "../lib/carta";
+import { MENU_ID, MENU_VACIO } from "../lib/menu";
+import {
+  BLOQUES,
+  platosDeMeriendas,
+  precioPlato,
+  resumenPlato,
+  separarPlatos,
+} from "../lib/carta";
 import { fotoEnCache, leerFoto } from "../lib/fotos";
 import { useVersionCorta } from "../lib/version.js";
 
@@ -26,6 +33,7 @@ const PASO = 0.05;
 export default function CartaTV() {
   const [fecha, setFecha] = useState(hoy());
   const [platos, setPlatos] = useState([]);
+  const [fijo, setFijo] = useState(MENU_VACIO);
   const [precios, setPrecios] = useState(PRECIOS_DEF);
   const [ahora, setAhora] = useState(Date.now());
   const [zoom, setZoom] = useState(() => Number(recordar.leer(CLAVE_ZOOM)) || 1);
@@ -54,9 +62,14 @@ export default function CartaTV() {
     const b = onSnapshot(doc(db, "config", "precios"), (s) =>
       setPrecios(s.exists() ? { ...PRECIOS_DEF, ...s.data() } : PRECIOS_DEF)
     );
+    // Las meriendas salen del catálogo, no de la carta del día: son fijas.
+    const c = onSnapshot(doc(db, "menus", MENU_ID), (s) =>
+      setFijo(s.exists() ? { ...MENU_VACIO, ...s.data() } : MENU_VACIO)
+    );
     return () => {
       a();
       b();
+      c();
     };
   }, [fecha]);
 
@@ -95,7 +108,7 @@ export default function CartaTV() {
     ajustar();
     window.addEventListener("resize", ajustar);
     return () => window.removeEventListener("resize", ajustar);
-  }, [platos, zoom, listas]);
+  }, [platos, fijo, zoom, listas]);
 
   const cambiarZoom = (paso) => {
     const z = Math.min(1.6, Math.max(0.6, Number((zoom + paso).toFixed(2))));
@@ -104,8 +117,11 @@ export default function CartaTV() {
   };
 
   // Los especiales van en su propio bloque: es lo que le da cara a la carta.
-  const grupos = separarPlatos(platos);
-  const hayDosBloques = grupos.corriente.length > 0 && grupos.especial.length > 0;
+  // Las meriendas también, y esas salen solas del catálogo.
+  const grupos = { ...separarPlatos(platos), merienda: platosDeMeriendas(fijo) };
+  const conContenido = BLOQUES.filter((b) => grupos[b.clave].length > 0);
+  const hayVarios = conContenido.length > 1;
+  const vacia = conContenido.length === 0;
 
   const d = new Date(fecha + "T12:00:00Z").toLocaleDateString("es-CO", {
     timeZone: ZONA,
@@ -141,7 +157,7 @@ export default function CartaTV() {
         v{version}
       </span>
 
-      {platos.length === 0 ? (
+      {vacia ? (
         <div className="tv-empty">
           <Plato />
           <h2>Ya viene el menú</h2>
@@ -157,7 +173,7 @@ export default function CartaTV() {
               <section className={"carta-bloque " + b.clave} key={b.clave}>
                 {/* El rótulo solo aparece si de verdad hay dos grupos: con un
                     solo tipo de plato, un encabezado suelto sobra. */}
-                {hayDosBloques && <h2 className="carta-rotulo">{b.titulo}</h2>}
+                {hayVarios && <h2 className="carta-rotulo">{b.titulo}</h2>}
 
                 <div className="carta-grid">
                   {delBloque.map((p) => {

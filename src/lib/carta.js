@@ -4,7 +4,7 @@ import {
   soloPrincipio,
   soloSabor,
 } from "./negocio.js";
-import { presentacionesDe } from "./menu.js";
+import { conNombre, presentacionesDe } from "./menu.js";
 
 /**
  * La carta del día: los platos que se muestran al cliente en el TV.
@@ -35,10 +35,11 @@ export const PLATO_VACIO = {
   fotos: [],
 };
 
-/** Los dos bloques en que se parte la carta del comedor. */
+/** Los bloques en que se parte la carta del comedor. */
 export const BLOQUES = [
   { clave: "corriente", titulo: "Menú del día" },
   { clave: "especial", titulo: "Especiales de la casa" },
+  { clave: "merienda", titulo: "Meriendas" },
 ];
 
 /** Máximo de fotos por plato: la del seco y la del caldo o la sopa. */
@@ -102,6 +103,34 @@ export function hayQueElegirPresentacion(sel) {
 }
 
 /**
+ * Las meriendas del catálogo, listas para proyectar.
+ *
+ * No pasan por la carta del día: son fijas, igual que en el talonario, así que
+ * lo que tenga foto en el catálogo sale todos los días sin armar nada. Sin
+ * foto no salen, porque una tarjeta vacía en una cartelera se ve mal.
+ *
+ * @param {object} fijo  El menú fijo completo
+ */
+export function platosDeMeriendas(fijo) {
+  const salida = [];
+
+  for (const f of conNombre(fijo?.meriendas)) {
+    for (const pres of presentacionesDe(f)) {
+      if (!pres.foto) continue;
+      salida.push({
+        id: `merienda:${f.id}:${pres.id}`,
+        merienda: { id: f.id, nombre: f.nombre, precio: Number(f.precio) || 0 },
+        presentacion: pres,
+        fotos: [pres.foto],
+        nota: "",
+      });
+    }
+  }
+
+  return salida;
+}
+
+/**
  * Qué presentaciones quedaron anunciadas hoy en el TV, por plato del catálogo.
  *
  * El talonario se alimenta de aquí y no del catálogo completo: si de cinco
@@ -160,9 +189,11 @@ export function resumenPlato(p) {
   /** Cómo se sirve: va debajo del título, para distinguir dos tarjetas iguales. */
   const subtitulo = capitalizar(p?.presentacion?.nombre || "");
 
-  // El plato de la casa se anuncia con su nombre y ya: es un plato completo.
+  // El plato de la casa y la merienda se anuncian con su nombre y ya.
   if (p?.deLaCasa?.nombre)
     return { titulo: capitalizar(p.deLaCasa.nombre), subtitulo, detalles: [] };
+  if (p?.merienda?.nombre)
+    return { titulo: capitalizar(p.merienda.nombre), subtitulo, detalles: [] };
 
   const prot = (p?.proteinas || []).map((x) => capitalizar(x?.nombre)).filter(Boolean);
   const huevos = (p?.huevos || [])
@@ -235,6 +266,8 @@ export function precioPlato(p, precios) {
   // La presentación manda solo si de verdad cuesta distinto.
   const propioPres = Number(p?.presentacion?.precio) || 0;
   if (propioPres > 0) return propioPres;
+
+  if (p?.merienda) return Number(p.merienda.precio) || 0;
 
   if (p?.deLaCasa) {
     const propio = Number(p.deLaCasa.precio) || 0;

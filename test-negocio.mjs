@@ -685,6 +685,46 @@ chk10('Sin presentacion la linea no cambia',
   armarLinea({ caldo: { id: 'c', nombre: 'Pescado' }, proteinas: [carne], precios: PRECIOS_DEF })
     .descripcion, 'CALDO DE PESCADO + CARNE DE RES');
 
+
+// --- Meriendas en el TV: salen solas del catalogo, sin publicar nada ---
+import { platosDeMeriendas } from './src/lib/carta.js';
+
+const catalogoConMeriendas = {
+  meriendas: [
+    { id: 'm1', nombre: 'Empanada', precio: 3000, foto: 'fEmp' },
+    { id: 'm2', nombre: 'Bunuelo', precio: 2000 },
+    {
+      id: 'm3', nombre: 'Jugo', precio: 4000,
+      presentaciones: [
+        { id: 'j1', nombre: 'De mora', foto: 'fMora', precio: 0 },
+        { id: 'j2', nombre: 'De lulo', foto: 'fLulo', precio: 5000 },
+        { id: 'j3', nombre: 'De guayaba', foto: '', precio: 0 },
+      ],
+    },
+    { id: 'm4', nombre: '', precio: 0, foto: 'fSinNombre' },
+  ],
+};
+
+const meriendasTv = platosDeMeriendas(catalogoConMeriendas);
+chk10('Solo salen las que tienen foto', meriendasTv.length, 3);
+chk10('La empanada sale', resumenPlato(meriendasTv[0]).titulo, 'Empanada');
+chk10('  con su precio', precioPlato(meriendasTv[0], PRECIOS_DEF), 3000);
+chk10('El bunuelo sin foto no sale',
+  meriendasTv.some((x) => x.merienda.nombre === 'Bunuelo'), false);
+chk10('La que no tiene nombre tampoco',
+  meriendasTv.some((x) => !x.merienda.nombre), false);
+
+chk10('El jugo sale dos veces, una por presentacion',
+  meriendasTv.filter((x) => x.merienda.nombre === 'Jugo').length, 2);
+chk10('  y se distinguen por el subtitulo', resumenPlato(meriendasTv[1]).subtitulo, 'De mora');
+chk10('  el de mora cobra el de la merienda', precioPlato(meriendasTv[1], PRECIOS_DEF), 4000);
+chk10('  el de lulo su propio precio', precioPlato(meriendasTv[2], PRECIOS_DEF), 5000);
+chk10('La de guayaba sin foto no sale',
+  meriendasTv.some((x) => x.presentacion.nombre === 'De guayaba'), false);
+
+chk10('Sin catalogo no rompe', platosDeMeriendas().length, 0);
+chk10('Sin meriendas tampoco', platosDeMeriendas({ proteinas: [] }).length, 0);
+
 console.log(f10 ? `\n❌ ${f10} fallo(s) en carta` : '\n✅ Carta: todo pasa');
 
 // ---------------------------------------------------------------
