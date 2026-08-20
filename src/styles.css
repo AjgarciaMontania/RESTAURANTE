@@ -911,3 +911,9 @@ textarea {
 .plato.merienda .plato-cuerpo h2 { font-size: 1.2em; margin-bottom: .15em; }
 .plato.merienda .plato-presenta { font-size: .85em; margin: 0 0 .2em; }
 .plato.merienda .plato-precio { font-size: 1.3em; padding-top: .3em; }
+
+/* Lista de combinaciones aprendidas, en el menú fijo */
+.combo-texto {
+  flex: 1; min-width: 0; font-weight: 600; font-size: 14px;
+  overflow-wrap: anywhere;
+}

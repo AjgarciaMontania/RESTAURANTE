@@ -5,6 +5,7 @@ import {
   soloSabor,
 } from "./negocio.js";
 import { conNombre, presentacionesDe } from "./menu.js";
+import { fotoDelCombo } from "./combos.js";
 
 /**
  * La carta del día: los platos que se muestran al cliente en el TV.
@@ -236,20 +237,23 @@ export function resumenPlato(p) {
 }
 
 /**
- * Las fotos que le corresponden al plato según el catálogo.
+ * Las fotos que le corresponden al plato, de lo más específico a lo más
+ * general. Ninguna se vuelve a pedir: todas se subieron una sola vez.
  *
- * La foto se sube una sola vez en el Menú fijo, pegada a la fila: la bandeja
- * paisa lleva la suya, la carne sudada la suya y el caldo de pescado la suya.
- * Aquí solo se resuelven, para que armar la carta no vuelva a pedir fotos.
- *
- *   Foto 1 -> el plato de la casa, o el seco (la primera proteína con foto)
+ *   Foto 1, en este orden:
+ *     1. la forma de servir escogida (con aguacate, con plátano…)
+ *     2. la combinación guardada del seco (frijoles + pechuga)
+ *     3. la del plato de la casa o la de la proteína
  *   Foto 2 -> el caldo o la sopa
  *
+ * @param {object} sel     Lo que se lleva armado
+ * @param {object[]} combos  Fotos de combinaciones guardadas
  * @returns {[string, string]} ids de foto, "" donde no haya
  */
-export function fotosSugeridas(sel) {
+export function fotosSugeridas(sel, combos) {
   const principal =
     sel?.presentacion?.foto ||
+    fotoDelCombo(sel, combos) ||
     presentacionesDe(origenPresentaciones(sel))[0]?.foto ||
     "";
   const liquido = sel?.caldo || sel?.sopa || null;

@@ -725,6 +725,64 @@ chk10('La de guayaba sin foto no sale',
 chk10('Sin catalogo no rompe', platosDeMeriendas().length, 0);
 chk10('Sin meriendas tampoco', platosDeMeriendas({ proteinas: [] }).length, 0);
 
+
+// --- Fotos de combinaciones: el plato servido, no el ingrediente ---
+import { claveCombo, conCombo, fotoDelCombo, nombreCombo, sinCombo } from './src/lib/combos.js';
+
+const kFrijoles = { id: 'p1', nombre: 'Frijoles' };
+const kPechuga = { id: 't2', nombre: 'Pechuga' };
+const kCaldo = { id: 'c9', nombre: 'Pescado' };
+const kHuevo = { id: 'h1', nombre: 'Huevos fritos' };
+
+const kMezcla = { principio: kFrijoles, proteinas: [kPechuga], huevos: [] };
+
+chk10('La llave junta el seco', claveCombo(kMezcla), 'p1|t2');
+chk10('El orden de los chips no importa',
+  claveCombo({ proteinas: [kPechuga], principio: kFrijoles }), claveCombo(kMezcla));
+chk10('El caldo NO entra en la llave',
+  claveCombo({ ...kMezcla, caldo: kCaldo }), 'p1|t2');
+chk10('Los huevos si entran',
+  claveCombo({ ...kMezcla, huevos: [kHuevo] }), 'h1|p1|t2');
+chk10('Sin seco no hay llave', claveCombo({ caldo: kCaldo }), '');
+chk10('Se lee bonito', nombreCombo(kMezcla), 'Frijoles + Pechuga');
+
+// Se aprende al publicar
+const kGuardadas = conCombo([], kMezcla, 'fPlato');
+chk10('Queda guardada', kGuardadas.length, 1);
+chk10('  con su foto', fotoDelCombo(kMezcla, kGuardadas), 'fPlato');
+
+// El caso de Alvaro: guardó frijoles+pechuga y publica con caldo
+chk10('Con caldo usa la misma foto',
+  fotoDelCombo({ ...kMezcla, caldo: kCaldo }, kGuardadas), 'fPlato');
+chk10('Con sopa tambien',
+  fotoDelCombo({ ...kMezcla, sopa: { id: 's1', nombre: 'Verduras' } }, kGuardadas), 'fPlato');
+
+// Otra kMezcla no la toma
+chk10('Otra kMezcla no tiene foto',
+  fotoDelCombo({ principio: kFrijoles, proteinas: [{ id: 't7', nombre: 'Carne' }] }, kGuardadas), '');
+
+// Volver a publicar con otra foto la actualiza
+const kCambiada = conCombo(kGuardadas, kMezcla, 'fNueva');
+chk10('Se actualiza la foto', fotoDelCombo(kMezcla, kCambiada), 'fNueva');
+chk10('  sin duplicar la kMezcla', kCambiada.length, 1);
+chk10('La misma foto no genera cambio', conCombo(kCambiada, kMezcla, 'fNueva'), null);
+chk10('Sin foto no guarda nada', conCombo([], kMezcla, ''), null);
+chk10('Sin seco tampoco', conCombo([], { caldo: kCaldo }, 'fX'), null);
+
+chk10('Se puede olvidar', sinCombo(kCambiada, 'p1|t2').length, 0);
+
+// La foto de la combinacion manda sobre la de la proteina
+const kPechugaFoto = { id: 't2', nombre: 'Pechuga', foto: 'fSoloPechuga' };
+chk10('La combinacion gana a la foto suelta',
+  fotosSugeridas({ principio: kFrijoles, proteinas: [kPechugaFoto] }, kGuardadas)[0], 'fPlato');
+chk10('Sin combinacion usa la de la proteina',
+  fotosSugeridas({ proteinas: [kPechugaFoto] }, [])[0], 'fSoloPechuga');
+chk10('La presentacion gana a todo',
+  fotosSugeridas(
+    { principio: kFrijoles, proteinas: [kPechugaFoto], presentacion: { foto: 'fPres' } },
+    kGuardadas
+  )[0], 'fPres');
+
 console.log(f10 ? `\n❌ ${f10} fallo(s) en carta` : '\n✅ Carta: todo pasa');
 
 // ---------------------------------------------------------------

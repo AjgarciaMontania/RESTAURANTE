@@ -10,6 +10,7 @@ import {
   presentacionesDe,
 } from "../lib/menu";
 import Presentaciones from "../components/Presentaciones.jsx";
+import Combinaciones from "../components/Combinaciones.jsx";
 import MiniFoto from "../components/MiniFoto.jsx";
 
 const uid = () => Math.random().toString(36).slice(2, 9);
@@ -220,6 +221,8 @@ export default function MenuFijo() {
           </div>
         ))}
       </div>
+
+      <Combinaciones />
 
       <button
         className="btn primary block"

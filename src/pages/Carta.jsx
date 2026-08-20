@@ -8,6 +8,7 @@ import {
   onSnapshot,
   query,
   serverTimestamp,
+  setDoc,
   updateDoc,
   where,
 } from "firebase/firestore";
@@ -29,6 +30,7 @@ import {
   resumenPlato,
   separarPlatos,
 } from "../lib/carta";
+import { COMBOS_ID, conCombo } from "../lib/combos";
 import ArmadorPlato from "../components/ArmadorPlato.jsx";
 import CampoFoto from "../components/CampoFoto.jsx";
 import MiniFoto from "../components/MiniFoto.jsx";
@@ -56,6 +58,8 @@ export default function Carta() {
   const [guardando, setGuardando] = useState(false);
   /** Ids de las presentaciones marcadas: una tarjeta por cada una. */
   const [presentSel, setPresentSel] = useState([]);
+  /** Fotos de combinaciones ya guardadas: "frijoles + pechuga" y su imagen. */
+  const [combos, setCombos] = useState([]);
   const [toast, setToast] = useState("");
 
   useEffect(() => {
@@ -75,11 +79,15 @@ export default function Carta() {
           .sort((p, q) => (p.creado?.toMillis?.() || 0) - (q.creado?.toMillis?.() || 0))
       )
     );
+    const e = onSnapshot(doc(db, "menus", COMBOS_ID), (s) =>
+      setCombos(s.exists() ? s.data().lista || [] : [])
+    );
     return () => {
       a();
       b();
       c();
       d();
+      e();
     };
   }, [fecha]);
 
@@ -93,6 +101,9 @@ export default function Carta() {
    * mano: la automática se reemplaza al cambiar el plato, la suya se respeta.
    */
   const fotoDelMenu = useRef(["", ""]);
+  /** Las combinaciones, accesibles desde `cambiar` sin re-crear la función. */
+  const combosRef = useRef([]);
+  combosRef.current = combos;
 
   const avisar = (t) => {
     setToast(t);
@@ -108,7 +119,7 @@ export default function Carta() {
   const cambiar = (parche) =>
     setBorrador((b) => {
       const siguiente = { ...b, ...parche };
-      const sugeridas = fotosSugeridas(siguiente);
+      const sugeridas = fotosSugeridas(siguiente, combosRef.current);
       const fotos = [...(siguiente.fotos || [])];
 
       for (let i = 0; i < MAX_FOTOS; i++) {
@@ -185,6 +196,12 @@ export default function Carta() {
             creado: serverTimestamp(),
           });
       }
+
+      // La mezcla queda aprendida: la próxima vez que se arme lo mismo, la
+      // foto aparece sola. Es lo que hace que no haya que fotografiar dos veces.
+      const listaNueva = conCombo(combos, borrador, (borrador.fotos || [])[0]);
+      if (listaNueva)
+        await setDoc(doc(db, "menus", COMBOS_ID), { lista: listaNueva }, { merge: true });
 
       setBorrador(null);
       setPresentSel([]);
