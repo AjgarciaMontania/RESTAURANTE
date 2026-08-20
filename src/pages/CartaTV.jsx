@@ -16,14 +16,21 @@ import { useVersionCorta } from "../lib/version.js";
 const CLAVE_ZOOM = "restaurante.cartaZoom";
 
 /**
- * Cuántas fichas caben de ancho en una zona que ocupa toda la pantalla.
+ * Entre cuántas fichas de ancho puede repartirse una zona de pantalla completa.
  *
- * Es la medida que manda en toda la carta: la tarjeta siempre mide un sexto
- * del ancho útil. Una zona de media pantalla lleva la mitad de columnas, así
- * que la tarjeta le queda igual de grande. Por eso agregar o quitar una
- * categoría ya no cambia el tamaño de nada.
+ * El número exacto lo calcula el componente con la forma de la pantalla, para
+ * que la foto quede siempre en 5:4 sin recortar el plato: en un TV alto caben
+ * pocas y grandes, en una ventana bajita caben más y más angostas. Sea cual
+ * sea, es el mismo para toda la carta —una zona de media pantalla lleva la
+ * mitad—, así que la tarjeta mide igual en los tres bloques y agregar una
+ * categoría no cambia el tamaño de nada. Siempre par, para que la mitad dé
+ * exacta.
  */
-const COLS_ZONA = 6;
+const COLS_MIN = 4;
+const COLS_MAX = 12;
+
+/** Proporción de la foto: 5 de ancho por 4 de alto. */
+const FOTO_RATIO = 0.8;
 
 /** Ancho de la tarjeta y hueco entre tarjetas, medidos en em. */
 const ANCHO_EM = 30;
@@ -67,8 +74,8 @@ const ZONAS = {
 };
 
 /** Cuántas fichas caben en una zona: media pantalla de ancho, la mitad. */
-const cupoDe = (z) => ((z.cols === 2 ? COLS_ZONA : COLS_ZONA / 2) * z.filas);
-const columnasDe = (z) => (z.cols === 2 ? COLS_ZONA : COLS_ZONA / 2);
+const columnasDe = (z, cols) => (z.cols === 2 ? cols : cols / 2);
+const cupoDe = (z, cols) => columnasDe(z, cols) * z.filas;
 
 /**
  * La carta en el TV del comedor: lo que hay hoy, con foto y precio.
@@ -87,8 +94,18 @@ export default function CartaTV() {
   const [listas, setListas] = useState(0);
   /** Cuál tanda de meriendas está en pantalla en este momento. */
   const [turno, setTurno] = useState(0);
+  /** Cuántas fichas de ancho lleva una zona de pantalla completa. */
+  const [cols, setCols] = useState(6);
 
   const tablero = useRef(null);
+  /**
+   * Cuántas veces se ha corregido el número de columnas sin que cambie el
+   * menú. Cambiar de columnas cambia el ancho de la tarjeta, y con él cómo
+   * parte el texto, así que la cuenta podría quedar rebotando entre dos
+   * valores. Con dos correcciones ya está afinado; de ahí en adelante se
+   * queda quieto.
+   */
+  const pasos = useRef(0);
   const version = useVersionCorta();
 
   // Reloj + cambio de día a medianoche
@@ -139,7 +156,7 @@ export default function CartaTV() {
       const b = BLOQUES.find((x) => x.clave === clave);
       const lista = grupos[clave] || [];
       const zona = reparto.zona[clave] || reparto.zona;
-      const cupo = cupoDe(zona);
+      const cupo = cupoDe(zona, cols);
       return { ...b, lista, zona, cupo, lotes: Math.max(1, Math.ceil(lista.length / cupo)) };
     })
     .filter((x) => x.lista.length);
@@ -148,12 +165,19 @@ export default function CartaTV() {
   const masLotes = Math.max(1, ...enPantalla.map((x) => x.lotes));
 
   /**
-   * El tamaño de letra sale de una cuenta, no de tantear hasta que quepa.
+   * Cuántas columnas y de qué tamaño: una cuenta, no tantear hasta que quepa.
    *
-   * Antes se probaba tamaño por tamaño hasta que el tablero cupiera, y por eso
-   * al agregar una categoría se encogía todo. Ahora la tarjeta siempre mide un
-   * sexto del ancho útil, así que el tamaño de letra sale directo de ahí; solo
-   * si la pantalla es muy baja se le baja para no dejar la foto sin alto.
+   * La zona siempre es media pantalla de alto, y ahí adentro tiene que caber la
+   * tarjeta entera: la foto en 5:4 más el texto. De esa igualdad sale el ancho
+   * de tarjeta que le sirve a esta pantalla, y de ahí cuántas caben de ancho y
+   * qué tamaño de letra les toca.
+   *
+   *   alto de tarjeta = foto + texto = 0.8·ancho + texto
+   *   ancho = ANCHO_EM · letra   y   texto = emTexto · letra
+   *
+   * Despejando la letra sale directo, sin probar tamaño por tamaño. Como el
+   * alto de zona no depende de cuántos bloques haya, la tarjeta mide igual con
+   * una, dos o tres categorías: lo que sobra se turna.
    */
   useLayoutEffect(() => {
     const el = tablero.current;
@@ -167,42 +191,65 @@ export default function CartaTV() {
       }
 
       const zonas = el.querySelector(".carta-bloques");
-      if (!zonas) return;
+      const ficha = el.querySelector(".plato-cuerpo");
+      if (!zonas || !ficha) return;
 
-      // Por ancho: `COLS_ZONA` tarjetas de `ANCHO_EM` más sus huecos tienen que
-      // dar justo el ancho del tablero.
+      const previo = parseFloat(getComputedStyle(el).fontSize) || 16;
       const ancho = zonas.clientWidth;
-      let f = (ancho / (COLS_ZONA * ANCHO_EM + (COLS_ZONA - 1) * HUECO_EM)) * zoom;
+      const alto = zonas.clientHeight;
+      if (!ancho || !alto) return;
+
+      // Lo que ocupan texto y rótulo, medido en em: no cambia al cambiar la
+      // letra, así que sirve para despejar de una.
+      const emTexto = Math.max(
+        ...[...el.querySelectorAll(".plato-cuerpo")].map((t) => t.scrollHeight / previo)
+      );
+      const rotulo = el.querySelector(".carta-rotulo");
+      const emRotulo = rotulo ? rotulo.getBoundingClientRect().height / previo + 0.45 : 0;
+      if (!Number.isFinite(emTexto) || emTexto <= 0) return;
+
+      // Dos zonas de alto, con su hueco (1em) y su rótulo cada una.
+      const letra = alto / (2 * (FOTO_RATIO * ANCHO_EM + emTexto + emRotulo) + 1);
+
+      // Cuántas tarjetas de ese ancho caben, en par para que la media zona dé
+      // exacta, y la letra final para que llenen el ancho justo.
+      const cabe = ancho / (ANCHO_EM * letra + HUECO_EM * letra);
+      const n = Math.max(COLS_MIN, Math.min(COLS_MAX, Math.round(cabe / 2) * 2));
+      const f = (ancho / (n * ANCHO_EM + (n - 1) * HUECO_EM)) * zoom;
+
       el.style.fontSize = f.toFixed(2) + "px";
-
-      // Por alto: el texto tiene que caber en la parte que no es foto. Se mide
-      // el renglonaje más alto de la carta, porque una tarjeta con el nombre en
-      // dos líneas manda sobre las demás. Dos pasadas, porque el rótulo también
-      // crece con la letra y cambia el alto de la tarjeta.
-      for (let i = 0; i < 2; i++) {
-        const ficha = el.querySelector(".plato");
-        if (!ficha) return;
-
-        const alto = ficha.getBoundingClientRect().height;
-        const emTexto = Math.max(
-          ...[...el.querySelectorAll(".plato-cuerpo")].map((t) => t.scrollHeight / f)
-        );
-        if (!alto || !Number.isFinite(emTexto) || emTexto <= 0) return;
-
-        // Primero cede la foto; solo si ni cediendo alcanza, baja la letra.
-        const parte = Math.min(FOTO_MAX, 1 - (emTexto * f) / alto);
-        el.style.setProperty("--foto", (Math.max(FOTO_MIN, parte) * 100).toFixed(1) + "%");
-        if (parte >= FOTO_MIN) break;
-
-        f = (alto * (1 - FOTO_MIN)) / emTexto;
-        el.style.fontSize = f.toFixed(2) + "px";
+      if (n !== cols && pasos.current < 2) {
+        pasos.current += 1;
+        setCols(n);
       }
+
+      // La foto se lleva lo que le quepa dentro de sus topes. Una sola medida
+      // para toda la carta: así ninguna tarjeta queda con la foto más baja que
+      // su vecina por llevar el nombre en dos renglones.
+      const tarjeta = el.querySelector(".plato");
+      if (!tarjeta) return;
+      const altoTarjeta = tarjeta.getBoundingClientRect().height;
+      const emTexto2 = Math.max(
+        ...[...el.querySelectorAll(".plato-cuerpo")].map((t) => t.scrollHeight / f)
+      );
+      const parte = Math.min(FOTO_MAX, 1 - (emTexto2 * f) / altoTarjeta);
+      el.style.setProperty("--foto", (Math.max(FOTO_MIN, parte) * 100).toFixed(1) + "%");
+    };
+
+    const reajustar = () => {
+      pasos.current = 0;
+      ajustar();
     };
 
     ajustar();
-    window.addEventListener("resize", ajustar);
-    return () => window.removeEventListener("resize", ajustar);
-  }, [platos, fijo, zoom, listas, turno]);
+    window.addEventListener("resize", reajustar);
+    return () => window.removeEventListener("resize", reajustar);
+  }, [platos, fijo, zoom, listas, turno, cols]);
+
+  // Menú nuevo, tanda nueva o zoom nuevo: la cuenta de columnas vuelve a abrirse.
+  useEffect(() => {
+    pasos.current = 0;
+  }, [platos, fijo, zoom, turno]);
 
   // Todas las tandas cambian al tiempo y con el mismo ritmo.
   useEffect(() => {
@@ -263,7 +310,7 @@ export default function CartaTV() {
           {enPantalla.map((b) => {
             const tanda = turno % b.lotes;
             const visibles = b.lista.slice(tanda * b.cupo, tanda * b.cupo + b.cupo);
-            const columnas = columnasDe(b.zona);
+            const columnas = columnasDe(b.zona, cols);
 
             return (
               <section
