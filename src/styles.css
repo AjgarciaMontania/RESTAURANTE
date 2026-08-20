@@ -736,7 +736,10 @@ textarea {
   /* El mínimo va en em a propósito: cuando el ajuste automático encoge la
      letra, caben más columnas y todo el bloque baja de alto. Con auto-fit las
      columnas vacías se colapsan y el alto deja de poder corregirse. */
-  grid-template-columns: repeat(auto-fill, minmax(17em, 1fr));
+  /* Con tope de ancho todas las tarjetas miden lo mismo, sean del menú del
+     día, especiales o meriendas: es lo que mantiene la carta pareja. */
+  grid-template-columns: repeat(auto-fill, minmax(17em, 26em));
+  justify-content: start;
   align-items: stretch;
 }
 .plato {
@@ -807,7 +810,26 @@ textarea {
 }
 
 /* ---- Carta: los dos bloques del comedor ---- */
-.carta-bloques { display: flex; flex-direction: column; gap: 1.4em; margin: auto 0; }
+/* Los bloques bajan uno debajo del otro, salvo los dos cortos: especiales y
+   meriendas se reparten un mismo renglón. Con tres renglones apilados el
+   ajuste automático tiene que encoger toda la carta para que quepa, y los
+   platos quedan diminutos en el TV; emparejándolos, sobra alto y crecen. */
+.carta-bloques {
+  display: flex; flex-wrap: wrap; align-items: flex-start;
+  gap: 1.4em 1.6em; margin: auto 0;
+}
+.carta-bloque { flex: 1 1 100%; min-width: 0; }
+.carta-bloques.pareado > .carta-bloque.especial,
+.carta-bloques.pareado > .carta-bloque.merienda { flex: 1 1 calc(50% - .8em); }
+/* En media pantalla caben tres columnas, y un especial solo quedaría flaco
+   al lado de la merienda. Se le pone tope de ancho, igual que a ella. */
+.carta-bloques.pareado > .carta-bloque.especial .carta-grid {
+  grid-template-columns: repeat(auto-fill, minmax(17em, 26em));
+  justify-content: start;
+}
+.carta-bloques.pareado > .carta-bloque.especial .carta-grid > .plato:only-child {
+  max-width: none; margin: 0;
+}
 .carta-bloques .carta-grid { margin: 0; }
 
 .carta-rotulo {
@@ -899,18 +921,47 @@ textarea {
 }
 .chip.on .forma { color: #f3d79a; }
 
-/* ---- Meriendas en el TV: tarjeta compacta ----
-   Una empanada no necesita la misma foto que un almuerzo, y así el bloque
-   ocupa poco alto y los platos del día se quedan grandes. */
+/* ---- Meriendas en el TV ----
+   Van de a una, turnándose. La tarjeta es igual a la de los especiales y del
+   mismo ancho que las demás, para que los tres bloques se vean parejos. */
 .carta-bloque.merienda .carta-grid {
-  grid-template-columns: repeat(auto-fill, minmax(13em, 1fr));
+  grid-template-columns: minmax(17em, 26em);
+  justify-content: start;
 }
-.plato.merienda { flex-direction: row; }
-.plato.merienda .plato-foto { width: 40%; flex: none; aspect-ratio: 1; }
-.plato.merienda .plato-cuerpo { padding: .5em .75em .6em; justify-content: center; }
-.plato.merienda .plato-cuerpo h2 { font-size: 1.2em; margin-bottom: .15em; }
-.plato.merienda .plato-presenta { font-size: .85em; margin: 0 0 .2em; }
-.plato.merienda .plato-precio { font-size: 1.3em; padding-top: .3em; }
+/* La regla del plato solo no aplica: aquí siempre hay uno y va alineado. */
+.carta-bloque.merienda .carta-grid > .plato:only-child { max-width: none; margin: 0; }
+
+/* La entrada de cada merienda: aparece subiendo y aclarándose. */
+@keyframes entraMerienda {
+  from { opacity: 0; transform: translateY(.7em) scale(.98); }
+  to   { opacity: 1; transform: none; }
+}
+.plato.merienda { animation: entraMerienda .5s cubic-bezier(.22, .61, .36, 1) both; }
+
+/* Los puntos dicen cuántas hay y en cuál va */
+.carta-puntos { display: flex; gap: .45em; margin-top: .7em; }
+.carta-puntos span {
+  width: .5em; height: .5em; border-radius: 50%;
+  background: rgba(233, 200, 125, .3);
+  transition: background .3s, transform .3s;
+}
+.carta-puntos span.on { background: #d8a94f; transform: scale(1.25); }
+
+@media (prefers-reduced-motion: reduce) {
+  .plato.merienda { animation: none; }
+}
+
+/* En el celular manda una tarjeta por renglón: ni bloques emparejados ni topes
+   de ancho, que ahí la carta se lee bajando. Va al final a propósito, después
+   de las reglas del TV, que son igual de específicas. */
+@media (max-width: 720px) {
+  .carta-bloque.merienda .carta-grid,
+  .carta-bloques.pareado > .carta-bloque.especial .carta-grid {
+    grid-template-columns: 1fr;
+  }
+  .carta-bloques.pareado > .carta-bloque.especial,
+  .carta-bloques.pareado > .carta-bloque.merienda { flex: 1 1 100%; }
+}
 
 /* Lista de combinaciones aprendidas, en el menú fijo */
 .combo-texto {

@@ -23,6 +23,15 @@ const MIN_ESCALA = 0.42;
 const MAX_ESCALA = 3;
 const PASO = 0.05;
 
+/**
+ * Cuánto dura cada merienda en pantalla.
+ *
+ * Van de a una y rotando: son muchas y pequeñas, y si salen todas juntas o
+ * roban el ancho de los almuerzos, la carta pierde el orden. Tres segundos
+ * alcanzan para leer el nombre y el precio sin cansar.
+ */
+const TURNO_MERIENDA = 3000;
+
 
 /**
  * La carta en el TV del comedor: lo que hay hoy, con foto y precio.
@@ -38,6 +47,8 @@ export default function CartaTV() {
   const [ahora, setAhora] = useState(Date.now());
   const [zoom, setZoom] = useState(() => Number(recordar.leer(CLAVE_ZOOM)) || 1);
   const [listas, setListas] = useState(0);
+  /** Cuál merienda está en pantalla en este momento. */
+  const [turno, setTurno] = useState(0);
 
   const tablero = useRef(null);
   const version = useVersionCorta();
@@ -72,6 +83,22 @@ export default function CartaTV() {
       c();
     };
   }, [fecha]);
+
+  // Los especiales van en su propio bloque: es lo que le da cara a la carta.
+  // Las meriendas también, y esas salen solas del catálogo.
+  const grupos = { ...separarPlatos(platos), merienda: platosDeMeriendas(fijo) };
+  const cuantasMeriendas = grupos.merienda.length;
+  const conContenido = BLOQUES.filter((b) => grupos[b.clave].length > 0);
+  const hayVarios = conContenido.length > 1;
+  const vacia = conContenido.length === 0;
+  /**
+   * Especiales y meriendas comparten renglón cuando los dos tienen algo.
+   *
+   * Son bloques cortos —un especial, una merienda a la vez— y apilados dejan
+   * la carta en tres renglones: el ajuste automático encoge todo para que
+   * quepa y los platos se ven diminutos desde la mesa.
+   */
+  const pareado = grupos.especial.length > 0 && grupos.merienda.length > 0;
 
   /** Igual que en cocina: se reduce el tamaño hasta que todo quepa. */
   useLayoutEffect(() => {
@@ -110,18 +137,22 @@ export default function CartaTV() {
     return () => window.removeEventListener("resize", ajustar);
   }, [platos, fijo, zoom, listas]);
 
+  // Las meriendas se turnan: una a la vez, cambiando sola.
+  useEffect(() => {
+    setTurno(0);
+    if (cuantasMeriendas < 2) return;
+    const t = setInterval(
+      () => setTurno((i) => (i + 1) % cuantasMeriendas),
+      TURNO_MERIENDA
+    );
+    return () => clearInterval(t);
+  }, [cuantasMeriendas]);
+
   const cambiarZoom = (paso) => {
     const z = Math.min(1.6, Math.max(0.6, Number((zoom + paso).toFixed(2))));
     setZoom(z);
     recordar.guardar(CLAVE_ZOOM, String(z));
   };
-
-  // Los especiales van en su propio bloque: es lo que le da cara a la carta.
-  // Las meriendas también, y esas salen solas del catálogo.
-  const grupos = { ...separarPlatos(platos), merienda: platosDeMeriendas(fijo) };
-  const conContenido = BLOQUES.filter((b) => grupos[b.clave].length > 0);
-  const hayVarios = conContenido.length > 1;
-  const vacia = conContenido.length === 0;
 
   const d = new Date(fecha + "T12:00:00Z").toLocaleDateString("es-CO", {
     timeZone: ZONA,
@@ -164,7 +195,7 @@ export default function CartaTV() {
           <p>Los platos de hoy aparecen aquí solos, sin recargar</p>
         </div>
       ) : (
-        <div className="carta-bloques">
+        <div className={"carta-bloques" + (pareado ? " pareado" : "")}>
           {BLOQUES.map((b) => {
             const delBloque = grupos[b.clave];
             if (!delBloque.length) return null;
@@ -176,7 +207,10 @@ export default function CartaTV() {
                 {hayVarios && <h2 className="carta-rotulo">{b.titulo}</h2>}
 
                 <div className="carta-grid">
-                  {delBloque.map((p) => {
+                  {(b.clave === "merienda" && delBloque.length > 1
+                    ? [delBloque[turno % delBloque.length]]
+                    : delBloque
+                  ).map((p) => {
                     const { titulo, subtitulo, detalles } = resumenPlato(p);
                     const fotos = (p.fotos || []).filter(Boolean);
 
@@ -208,6 +242,14 @@ export default function CartaTV() {
                     );
                   })}
                 </div>
+
+                {b.clave === "merienda" && delBloque.length > 1 && (
+                  <div className="carta-puntos" aria-hidden="true">
+                    {delBloque.map((x, i) => (
+                      <span key={x.id} className={i === turno % delBloque.length ? "on" : ""} />
+                    ))}
+                  </div>
+                )}
               </section>
             );
           })}
