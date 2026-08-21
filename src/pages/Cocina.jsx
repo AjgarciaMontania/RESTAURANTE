@@ -3,6 +3,7 @@ import { collection, doc, onSnapshot, query, updateDoc, where } from "firebase/f
 import { db, hoy, horaColombia, recordar, ZONA } from "../firebase";
 import { TIPO_DESECHABLE } from "../lib/negocio";
 import { useVersionCorta } from "../lib/version.js";
+import Musica from "../components/Musica.jsx";
 
 /** Minutos a partir de los cuales la comanda se marca como atrasada. */
 const AVISO = 10;
@@ -25,7 +26,16 @@ const EXTRAS = {
 
 const CLAVE_ZOOM = "restaurante.tvZoom";
 const BASE = 16;
-const MIN_ESCALA = 0.42;
+
+/**
+ * Ancho de comanda y hueco entre comandas, en em.
+ *
+ * La comanda ya no se encoge para que quepan todas: mantiene su tamaño y las
+ * que no caben pasan a la página siguiente. Encogiéndolas, un día cargado
+ * dejaba los nombres partidos letra por letra y la pantalla ilegible.
+ */
+const ANCHO_EM = 21;
+const HUECO_EM = 1.1;
 
 /** Pantalla para el TV. Se abre con  .../#/cocina  en pantalla completa. */
 export default function Cocina() {
@@ -35,6 +45,15 @@ export default function Cocina() {
   const [ahora, setAhora] = useState(Date.now());
   const [zoom, setZoom] = useState(() => Number(recordar.leer(CLAVE_ZOOM)) || 1);
   const [autoMin, setAutoMin] = useState(0);
+  /** Cuántas comandas caben en una página de la pantalla. */
+  const [cupo, setCupo] = useState(12);
+  /**
+   * Cuántas veces se ha corregido el cupo sin que cambien las comandas.
+   * Cambiar el cupo cambia qué comandas se ven, y con ellas el alto de la más
+   * alta, así que la cuenta podría quedar rebotando. Dos correcciones afinan;
+   * de ahí en adelante se queda quieto hasta que entre o salga un pedido.
+   */
+  const pasos = useRef(0);
 
   const tablero = useRef(null);
   const version = useVersionCorta();
@@ -66,32 +85,58 @@ export default function Cocina() {
   }, [fecha]);
 
   /**
-   * Ajuste automático: empieza en el tamaño elegido y lo va reduciendo hasta
-   * que todas las comandas quepan sin desbordar la pantalla del TV.
+   * Cuántas comandas caben en pantalla, sin encoger ninguna.
+   *
+   * El tamaño de la comanda lo fija el ancho de la pantalla; el alto dice
+   * cuántos renglones caben. De ahí sale el cupo de una página: lo que pase de
+   * ahí espera su turno en la siguiente.
    */
   useLayoutEffect(() => {
     const el = tablero.current;
     if (!el) return;
 
-    const desborda = () => {
-      const r = document.documentElement;
-      return r.scrollHeight > window.innerHeight + 2 || r.scrollWidth > window.innerWidth + 1;
-    };
+    const medir = () => {
+      const rejilla = el.querySelector(".tv-grid");
+      const f = BASE * zoom;
+      el.style.fontSize = f.toFixed(2) + "px";
+      if (!rejilla) return;
 
-    const ajustar = () => {
-      let f = zoom;
-      el.style.fontSize = BASE * f + "px";
-      let vueltas = 0;
-      while (desborda() && f > MIN_ESCALA && vueltas++ < 40) {
-        f -= 0.035;
-        el.style.fontSize = (BASE * f).toFixed(2) + "px";
+      const columnas = Math.max(
+        1,
+        Math.floor((rejilla.clientWidth + HUECO_EM * f) / ((ANCHO_EM + HUECO_EM) * f))
+      );
+
+      // El alto de la comanda más alta manda: así ninguna queda cortada.
+      const altos = [...rejilla.querySelectorAll(".ticket")].map(
+        (t) => t.getBoundingClientRect().height
+      );
+      const altoFicha = altos.length ? Math.max(...altos) : 0;
+      const libre = rejilla.getBoundingClientRect().height;
+      const renglones = altoFicha
+        ? Math.max(1, Math.floor((libre + HUECO_EM * f) / (altoFicha + HUECO_EM * f)))
+        : 1;
+
+      const nuevo = columnas * renglones;
+      if (nuevo !== cupo && pasos.current < 2) {
+        pasos.current += 1;
+        setCupo(nuevo);
       }
     };
 
-    ajustar();
-    window.addEventListener("resize", ajustar);
-    return () => window.removeEventListener("resize", ajustar);
-  }, [pedidos, entregados, zoom]);
+    const remedir = () => {
+      pasos.current = 0;
+      medir();
+    };
+
+    medir();
+    window.addEventListener("resize", remedir);
+    return () => window.removeEventListener("resize", remedir);
+  }, [pedidos, entregados, zoom, cupo]);
+
+  // Comanda nueva o entregada: la cuenta del cupo vuelve a abrirse.
+  useEffect(() => {
+    pasos.current = 0;
+  }, [pedidos.length, entregados, zoom]);
 
   const cambiarZoom = (paso) => {
     const z = Math.min(1.6, Math.max(0.6, Number((zoom + paso).toFixed(2))));
@@ -130,10 +175,25 @@ export default function Cocina() {
     return !!p.modificado && !!ms && ahora - ms < RESALTE_MS;
   };
 
-  // Lo corregido salta al frente: el cocinero tiene que volver a leerlo.
-  const enPantalla = [...pedidos].sort(
-    (a, b) => recienCambiado(b) - recienCambiado(a) || a.numero - b.numero
-  );
+  /**
+   * Las comandas van siempre por número, incluso las corregidas.
+   *
+   * Antes lo corregido saltaba de primero y el cocinero perdía de vista dónde
+   * estaba la comanda que ya venía siguiendo. El sello ✎ y el parpadeo bastan
+   * para que se note el cambio sin mover nada de lugar.
+   */
+  const enOrden = [...pedidos].sort((a, b) => a.numero - b.numero);
+
+  /**
+   * La pantalla muestra la página donde están cayendo las comandas nuevas.
+   *
+   * Cuando una página se llena, la siguiente entra sola y se queda hasta que
+   * también se llene. A medida que la cocina va entregando, la lista se acorta
+   * y la pantalla vuelve sola a una sola página.
+   */
+  const paginas = Math.max(1, Math.ceil(enOrden.length / cupo));
+  const pagina = paginas - 1;
+  const enPantalla = enOrden.slice(pagina * cupo, pagina * cupo + cupo);
 
   const reloj = horaColombia(ahora);
   const d = new Date(fecha + "T12:00:00Z").toLocaleDateString("es-CO", {
@@ -145,7 +205,7 @@ export default function Cocina() {
   const dia = d.charAt(0).toUpperCase() + d.slice(1);
 
   return (
-    <div className="tv" ref={tablero}>
+    <div className="tv cocina" ref={tablero}>
       <header className="tv-head">
         <span className="tv-marca" aria-hidden="true">
           <Plato />
@@ -174,6 +234,8 @@ export default function Cocina() {
         </div>
       </header>
 
+      <Musica />
+
       <span className="tv-version" title="Versión instalada en este equipo">
         v{version}
       </span>
@@ -185,6 +247,7 @@ export default function Cocina() {
           <p>Las comandas nuevas aparecen aquí solas, sin recargar</p>
         </div>
       ) : (
+        <>
         <div className="tv-grid">
           {enPantalla.map((p) => {
             const m = minutos(p);
@@ -268,6 +331,19 @@ export default function Cocina() {
             );
           })}
         </div>
+
+        {/* El renglón del indicador se reserva siempre, aunque haya una sola
+            página: si apareciera y desapareciera, el alto libre cambiaría y la
+            cuenta del cupo quedaría rebotando. */}
+        <div className={"tv-paginas" + (paginas > 1 ? "" : " oculto")} aria-hidden="true">
+          {Array.from({ length: paginas }, (_, i) => (
+            <span key={i} className={i === pagina ? "on" : ""} />
+          ))}
+          <em>
+            Página {pagina + 1} de {paginas} · {enOrden.length} en preparación
+          </em>
+        </div>
+        </>
       )}
     </div>
   );

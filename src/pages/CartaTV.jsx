@@ -12,6 +12,7 @@ import {
 } from "../lib/carta";
 import { fotoEnCache, leerFoto } from "../lib/fotos";
 import { useVersionCorta } from "../lib/version.js";
+import Musica from "../components/Musica.jsx";
 
 const CLAVE_ZOOM = "restaurante.cartaZoom";
 
@@ -37,15 +38,15 @@ const ANCHO_EM = 30;
 const HUECO_EM = 0.9;
 
 /**
- * Entre qué límites se mueve la parte del alto que se lleva la foto.
+ * Qué parte del alto de la tarjeta puede llevarse la foto.
  *
- * Es una sola medida para toda la carta, no una por tarjeta: si cada foto se
- * quedara con lo que le sobre a su texto, dos tarjetas de la misma zona
- * tendrían fotos de distinto alto según si el nombre cupo en uno o en dos
- * renglones. En una pantalla alta la foto se lleva el tope; en una bajita cede
- * hasta el mínimo antes que ponerse a achicar la letra.
+ * La foto se estira hasta donde arranca el texto: así no queda espacio en
+ * blanco debajo del precio. Es una sola medida para toda la carta, no una por
+ * tarjeta —se calcula con el texto más largo que haya—, porque si cada foto se
+ * quedara con lo que le sobre a la suya, dos tarjetas vecinas quedarían con
+ * fotos de distinto alto según si el nombre cupo en uno o en dos renglones.
  */
-const FOTO_MAX = 0.58;
+const FOTO_MAX = 0.82;
 const FOTO_MIN = 0.45;
 
 /**
@@ -183,6 +184,22 @@ export default function CartaTV() {
     const el = tablero.current;
     if (!el) return;
 
+    /**
+     * Cuánto mide de verdad el texto de una tarjeta.
+     *
+     * Hay que soltarlo un momento de la rejilla para medirlo: mientras esté
+     * ocupando su casilla, lo que se lee es el alto de la casilla y no el del
+     * texto, y la cuenta se quedaría dando vueltas sobre sí misma.
+     */
+    const medirTexto = (t) => {
+      const antes = t.getAttribute("style") || "";
+      t.style.flex = "none";
+      t.style.height = "auto";
+      const alto = t.getBoundingClientRect().height;
+      t.setAttribute("style", antes);
+      return alto;
+    };
+
     const ajustar = () => {
       // En el celular la carta se lee bajando, con su tamaño normal.
       if (window.innerWidth <= 720) {
@@ -202,7 +219,7 @@ export default function CartaTV() {
       // Lo que ocupan texto y rótulo, medido en em: no cambia al cambiar la
       // letra, así que sirve para despejar de una.
       const emTexto = Math.max(
-        ...[...el.querySelectorAll(".plato-cuerpo")].map((t) => t.scrollHeight / previo)
+        ...[...el.querySelectorAll(".plato-cuerpo")].map((t) => medirTexto(t) / previo)
       );
       const rotulo = el.querySelector(".carta-rotulo");
       const emRotulo = rotulo ? rotulo.getBoundingClientRect().height / previo + 0.45 : 0;
@@ -223,17 +240,24 @@ export default function CartaTV() {
         setCols(n);
       }
 
-      // La foto se lleva lo que le quepa dentro de sus topes. Una sola medida
-      // para toda la carta: así ninguna tarjeta queda con la foto más baja que
-      // su vecina por llevar el nombre en dos renglones.
-      const tarjeta = el.querySelector(".plato");
-      if (!tarjeta) return;
-      const altoTarjeta = tarjeta.getBoundingClientRect().height;
-      const emTexto2 = Math.max(
-        ...[...el.querySelectorAll(".plato-cuerpo")].map((t) => t.scrollHeight / f)
-      );
-      const parte = Math.min(FOTO_MAX, 1 - (emTexto2 * f) / altoTarjeta);
-      el.style.setProperty("--foto", (Math.max(FOTO_MIN, parte) * 100).toFixed(1) + "%");
+      // La foto se estira hasta donde arranca el texto, para que no quede
+      // espacio en blanco. La medida se saca por zona y no para toda la carta:
+      // dentro de una zona las tarjetas van lado a lado y tienen que quedar
+      // iguales, pero un bloque de nombres largos no tiene por qué achicarle la
+      // foto al bloque de al lado.
+      for (const bloque of el.querySelectorAll(".carta-bloque")) {
+        const tarjeta = bloque.querySelector(".plato");
+        if (!tarjeta) continue;
+
+        const altoTarjeta = tarjeta.getBoundingClientRect().height;
+        const emTexto2 = Math.max(
+          ...[...bloque.querySelectorAll(".plato-cuerpo")].map((t) => medirTexto(t) / f)
+        );
+        if (!altoTarjeta || !Number.isFinite(emTexto2)) continue;
+
+        const parte = Math.min(FOTO_MAX, 1 - (emTexto2 * f) / altoTarjeta);
+        bloque.style.setProperty("--foto", (Math.max(FOTO_MIN, parte) * 100).toFixed(1) + "%");
+      }
     };
 
     const reajustar = () => {
@@ -294,6 +318,8 @@ export default function CartaTV() {
           <div className="tv-reloj">{horaColombia(ahora)}</div>
         </div>
       </header>
+
+      <Musica />
 
       <span className="tv-version" title="Versión instalada en este equipo">
         v{version}

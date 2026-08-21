@@ -438,6 +438,36 @@ textarea {
   align-items: start;
 }
 
+/* ---- La pantalla de cocina ----
+   La comanda no se encoge: conserva su tamaño y lo que no cabe pasa a la
+   página siguiente. Encogiéndolas, un día cargado partía los nombres letra por
+   letra y la pantalla quedaba ilegible. */
+@media (min-width: 721px) {
+  .tv.cocina { height: 100vh; min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
+  .tv.cocina .tv-grid {
+    grid-template-columns: repeat(auto-fill, 21em);
+    justify-content: start; align-content: start;
+    flex: 1; min-height: 0; overflow: hidden;
+  }
+}
+
+/* En cuál página va la cocina y cuántas hay */
+.tv-paginas {
+  display: flex; align-items: center; gap: .5em;
+  padding-top: .8em; flex: none;
+}
+.tv-paginas span {
+  width: .55em; height: .55em; border-radius: 50%;
+  background: rgba(233, 200, 125, .3);
+  transition: background .3s, transform .3s;
+}
+.tv-paginas span.on { background: #d8a94f; transform: scale(1.25); }
+.tv-paginas em {
+  margin-left: .7em; font-style: normal; font-size: .85em;
+  color: rgba(238, 243, 239, .55); letter-spacing: .04em;
+}
+.tv-paginas.oculto { visibility: hidden; }
+
 .ticket {
   position: relative; overflow: hidden;
   background: #fbf7ee; color: #2a2420;
@@ -823,6 +853,21 @@ textarea {
   .plato-precio { font-size: 1.8em; }
 }
 
+/* Precio que se puede corregir solo para este pedido */
+.l-unit.tocable {
+  border: 1px dashed var(--line-fuerte); border-radius: 8px;
+  background: transparent; padding: 6px 10px; min-height: 40px;
+  cursor: pointer; color: inherit; font: inherit; white-space: nowrap;
+}
+.l-unit.tocable span { color: var(--oro); margin-left: 4px; }
+.l-unit.tocable:active { background: var(--surface-2); }
+.l-input.manual { border-color: var(--oro); background: #fdf6e6; font-weight: 700; }
+.l-manual {
+  display: block; margin-top: 2px; font-style: normal;
+  font-size: 11px; font-weight: 800; letter-spacing: .04em;
+  color: #a8631a; text-transform: uppercase;
+}
+
 /* Renglón que calcula la app sola: el empaque de "para llevar" */
 .linea.auto { background: #fbf3e0; border-color: #ecd9ac; }
 .linea.auto .l-desc { color: #5c4413; }
@@ -1010,4 +1055,59 @@ textarea {
 .combo-texto {
   flex: 1; min-width: 0; font-weight: 600; font-size: 14px;
   overflow-wrap: anywhere;
+}
+
+/* ---- Música de fondo en las pantallas del comedor ----
+   Discreta: dos botones en una esquina que casi no se ven hasta que se pasa
+   el mouse. La idea es dejarla sonando y olvidarse de ella. */
+.musica {
+  /* Un poco arriba del número de versión, que vive en esa misma esquina. */
+  position: fixed; right: 1em; bottom: 2.4em; z-index: 40;
+  display: flex; align-items: flex-end; gap: .5em;
+  opacity: .35; transition: opacity .25s;
+}
+.musica:hover, .musica.abierta, .musica.sonando { opacity: 1; }
+
+.musica-btn {
+  width: 2.6em; height: 2.6em; flex: none;
+  border-radius: 50%; border: 1px solid rgba(233, 200, 125, .45);
+  background: rgba(20, 56, 44, .85); color: #e9c87d;
+  font-size: 1em; line-height: 1; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  backdrop-filter: blur(4px);
+}
+.musica-btn:hover { background: rgba(31, 92, 69, .95); }
+.musica-btn:disabled { opacity: .4; cursor: not-allowed; }
+.musica-btn.chico {
+  width: auto; min-width: 2.2em; height: 2.2em;
+  border-radius: 1.2em; padding: 0 .7em; font-size: .9em;
+}
+
+.musica-panel {
+  position: absolute; right: 0; bottom: 3.2em;
+  min-width: 15em; max-width: 22em;
+  background: rgba(20, 56, 44, .96); color: #eef3ef;
+  border: 1px solid rgba(233, 200, 125, .3); border-radius: .7em;
+  padding: .8em .9em; box-shadow: 0 .6em 1.8em rgba(0, 0, 0, .45);
+}
+.musica-ahora { margin: 0 0 .6em; font-weight: 700; font-size: .95em; }
+.musica-ahora em { font-style: normal; font-weight: 400; opacity: .6; }
+.musica-acciones { display: flex; gap: .5em; flex-wrap: wrap; }
+.musica-nota {
+  margin: .7em 0 0; font-size: .8em; line-height: 1.35;
+  color: rgba(238, 243, 239, .65);
+}
+.musica-nota.alerta { color: #f0b3a4; }
+
+/* Lista de canciones guardadas, en Ajustes */
+.lista-pistas { list-style: none; margin: 12px 0 0; padding: 0; }
+.lista-pistas li {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 10px; margin-bottom: 6px;
+  background: var(--surface-2); border: 1px solid var(--line);
+  border-radius: 9px;
+}
+.lista-pistas .nombre {
+  flex: 1; min-width: 0; font-weight: 600; font-size: 14px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }

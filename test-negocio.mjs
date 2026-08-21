@@ -860,4 +860,95 @@ chk11('Los desechables no se abren', conEmpaques[0].filas.length, 0);
 chk11('  pero suman', conEmpaques[0].total, 4000);
 
 console.log(f11 ? `\n❌ ${f11} fallo(s) en para llevar` : '\n✅ Para llevar y desglose: todo pasa');
-process.exit(fallos + f2 + f3 + f4 + f5 + f6 + f7 + f8 + f9 + f10 + f11 ? 1 : 0);
+// --- Meriendas sin nombre de fila: manda el de la presentacion ---
+console.log('\n--- Meriendas sin titulo ---');
+let f12 = 0;
+const chk12 = (nom, real, esp) => {
+  const ok = real === esp;
+  if (!ok) f12++;
+  console.log(`${ok ? '\u2713' : '\u2717'} ${nom}  ->  ${real}${ok ? '' : `  (esperado ${esp})`}`);
+};
+import { conNombreVisible, nombreVisible } from './src/lib/menu.js';
+import { platosDeMeriendas as mds } from './src/lib/carta.js';
+
+const filaSinNombre = {
+  id: 'm1', nombre: '', precio: 15000,
+  presentaciones: [{ id: 'p1', nombre: 'Huevos con jamon', foto: 'f1', precio: 0 }],
+};
+const filaConNombre = {
+  id: 'm2', nombre: 'Comidas saludables', precio: 12000,
+  presentaciones: [{ id: 'p2', nombre: 'Huevos con waffles', foto: 'f2', precio: 0 }],
+};
+const filaPelada = { id: 'm3', nombre: '', precio: 3000, presentaciones: [] };
+
+chk12('La fila sin nombre toma el de su presentacion',
+  nombreVisible(filaSinNombre), 'Huevos con jamon');
+chk12('  y la que si tiene nombre lo conserva',
+  nombreVisible(filaConNombre), 'Comidas saludables');
+chk12('  una fila del todo vacia sigue sin contar', nombreVisible(filaPelada), '');
+chk12('Solo pasan las filas que tienen como llamarse',
+  conNombreVisible([filaSinNombre, filaConNombre, filaPelada]).length, 2);
+
+const mCartas = mds({ meriendas: [filaSinNombre, filaConNombre] });
+chk12('Las dos meriendas salen en la carta', mCartas.length, 2);
+chk12('  la que no tenia nombre se anuncia con la presentacion',
+  mCartas[0].merienda.nombre, 'Huevos con jamon');
+chk12('  y no repite el nombre debajo', mCartas[0].presentacion.nombre, '');
+chk12('  la que si tenia nombre conserva su subtitulo',
+  mCartas[1].presentacion.nombre, 'Huevos con waffles');
+chk12('  el precio de la presentacion manda cuando tiene',
+  mds({ meriendas: [{ ...filaSinNombre, presentaciones: [{ id: 'p1', nombre: 'Jugo', foto: 'f', precio: 4000 }] }] })[0].merienda.precio,
+  4000);
+
+console.log('\n✅ Meriendas sin titulo: todo pasa');
+
+// --- Musica de fondo: que enlaces sirven y en que orden suenan ---
+import {
+  esEnlaceDeAudio, limpiarPistas, nombreDesdeUrl, ordenDePistas, siguientePista, volumenValido,
+} from './src/lib/musica.js';
+
+console.log('\n--- Musica de fondo ---');
+let f13 = 0;
+const chk13 = (nom, real, esp) => {
+  const ok = real === esp;
+  if (!ok) f13++;
+  console.log(`${ok ? '\u2713' : '\u2717'} ${nom}  ->  ${real}${ok ? '' : `  (esperado ${esp})`}`);
+};
+
+chk13('Un mp3 sirve', esEnlaceDeAudio('https://x.com/a/cancion.mp3'), true);
+chk13('  con parametros tambien', esEnlaceDeAudio('https://x.com/a.m4a?token=1'), true);
+chk13('YouTube no sirve', esEnlaceDeAudio('https://youtube.com/watch?v=abc'), false);
+chk13('Spotify no sirve', esEnlaceDeAudio('https://open.spotify.com/track/abc'), false);
+chk13('Una pagina cualquiera no sirve', esEnlaceDeAudio('https://x.com/musica'), false);
+chk13('Vacio no sirve', esEnlaceDeAudio(''), false);
+
+chk13('El nombre sale del enlace', nombreDesdeUrl('https://x.com/a/Cumbia_Sabrosa.mp3'), 'Cumbia Sabrosa');
+chk13('  y si no se puede, algo pone', nombreDesdeUrl('no-es-url'), 'Pista');
+
+const crudas = [
+  { url: ' https://x.com/uno.mp3 ', nombre: '  ' },
+  { url: '', nombre: 'Sin enlace' },
+  { id: 'z', url: 'https://x.com/dos.mp3', nombre: 'Dos' },
+];
+const limpias = limpiarPistas(crudas);
+chk13('Las pistas sin enlace se caen', limpias.length, 2);
+chk13('  el enlace queda sin espacios', limpias[0].url, 'https://x.com/uno.mp3');
+chk13('  y sin nombre se le pone el del archivo', limpias[0].nombre, 'Uno');
+chk13('  el id propio se respeta', limpias[1].id, 'z');
+
+const tres = [{ id: 'a' }, { id: 'b' }, { id: 'c' }];
+chk13('Sin barajar conserva el orden', ordenDePistas(tres).map((x) => x.id).join(''), 'abc');
+chk13('  y no toca la lista original', tres.map((x) => x.id).join(''), 'abc');
+chk13('Barajando salen todas', ordenDePistas(tres, true, () => 0.99).length, 3);
+
+chk13('Despues de la ultima vuelve a la primera', siguientePista(2, 3), 0);
+chk13('  y avanza normal', siguientePista(0, 3), 1);
+chk13('  sin pistas se queda en cero', siguientePista(0, 0), 0);
+
+chk13('El volumen no se pasa de 1', volumenValido(5), 1);
+chk13('  ni baja de 0', volumenValido(-2), 0);
+chk13('  y un valor raro cae en el de fabrica', volumenValido('hola'), 0.35);
+
+console.log(f13 ? `\n\u274c ${f13} fallo(s) en musica` : '\n\u2705 Musica de fondo: todo pasa');
+
+process.exit(fallos + f2 + f3 + f4 + f5 + f6 + f7 + f8 + f9 + f10 + f11 + f12 + f13 ? 1 : 0);

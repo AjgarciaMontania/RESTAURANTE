@@ -32,8 +32,10 @@ import {
   MENU_ID,
   MENU_VACIO,
   conNombre,
+  conNombreVisible,
   idDiario,
   menuDelDia,
+  presentacionesDe,
 } from "../lib/menu";
 
 export default function Pedido() {
@@ -149,8 +151,9 @@ export default function Pedido() {
   const huevos = conNombre(menu.huevos);
   const adicionales = conNombre(menu.adicionales);
   const especiales = conNombre(menu.especiales);
-  // Fijas: no pasan por el menú de hoy, están disponibles siempre.
-  const meriendas = conNombre(menu.meriendas);
+  // Fijas: no pasan por el menú de hoy, están disponibles siempre. Se aceptan
+  // sin nombre de fila: ahí manda el nombre de la presentación.
+  const meriendas = conNombreVisible(menu.meriendas);
 
   /** Formas de servir el seco que hoy están anunciadas. */
   const formas = useMemo(
@@ -282,11 +285,11 @@ export default function Pedido() {
    * normal, tener tres renglones de empanada no.
    */
   const agregarSuelto = (fila, tipo, { rotulo = "", acumula = false, presentacion = null } = {}) => {
-    const base = (rotulo ? `${rotulo}: ` : "") + fila.nombre.toUpperCase();
+    const propio = (fila.nombre || "").trim();
+    const base = (rotulo ? `${rotulo}: ` : "") + (propio || presentacion?.nombre || "").toUpperCase();
     // La forma de servir va pegada al nombre, igual que se anuncia en el TV.
-    const descripcion = presentacion?.nombre
-      ? `${base} · ${presentacion.nombre.toUpperCase()}`
-      : base;
+    const descripcion =
+      presentacion?.nombre && propio ? `${base} · ${presentacion.nombre.toUpperCase()}` : base;
     // El precio de la presentación manda: es el que vio el cliente.
     const precioUnit = Number(presentacion?.precio) || Number(fila.precio) || 0;
 
@@ -310,6 +313,16 @@ export default function Pedido() {
 
   const editarItem = (id, campo, valor) =>
     setItems((s) => s.map((i) => (i.id === id ? { ...i, [campo]: valor } : i)));
+
+  /**
+   * Abre el precio de un renglón que venía con precio de catálogo.
+   *
+   * Pasa de vez en cuando: el caldo de huevo vale $6.000 pero hoy se acordó en
+   * $5.000. El cambio es solo para este pedido —el catálogo no se toca— y el
+   * renglón queda marcado para que en Caja se vea que fue precio especial.
+   */
+  const abrirPrecio = (id) =>
+    setItems((s) => s.map((i) => (i.id === id ? { ...i, fijo: false, manual: true } : i)));
 
   const quitar = (id) => setItems((s) => s.filter((i) => i.id !== id));
 
@@ -796,23 +809,49 @@ export default function Pedido() {
             Se cobran aparte. Toca varias veces para subir la cantidad.
           </p>
           <div className="chips">
-            {meriendas.map((m) => {
-              const puestas = items
-                .filter((i) => i.tipo === "merienda" && i.descripcion.endsWith(m.nombre.toUpperCase()))
-                .reduce((n, i) => n + i.cant, 0);
+            {meriendas.flatMap((m) => {
+              // Igual que los especiales: si la merienda tiene formas de
+              // servir, cada una es su propia ficha con su propio precio.
+              const propio = (m.nombre || "").trim();
+              const suyas = presentacionesDe(m).filter((x) => x.nombre);
+              const opciones = suyas.length ? suyas : [null];
 
-              return (
-                <button
-                  key={m.id}
-                  className={"chip" + (puestas ? " on" : "")}
-                  onClick={() =>
-                    agregarSuelto(m, "merienda", { rotulo: "MERIENDA", acumula: true })
-                  }
-                >
-                  {puestas > 0 && <b style={{ marginRight: 6 }}>{puestas}×</b>}
-                  {m.nombre} <span className="p">{money(m.precio)}</span>
-                </button>
-              );
+              return opciones.map((f) => {
+                const rotulo = propio || f?.nombre || "";
+                const forma = propio ? f?.nombre : "";
+                const precio = Number(f?.precio) || Number(m.precio) || 0;
+                const buscada =
+                  "MERIENDA: " +
+                  (rotulo + (forma ? " · " + forma : "")).toUpperCase();
+                const puestas = items
+                  .filter((i) => i.tipo === "merienda" && i.descripcion === buscada)
+                  .reduce((n, i) => n + i.cant, 0);
+
+                return (
+                  <button
+                    key={m.id + ":" + (f?.id || "base")}
+                    className={"chip" + (forma ? " conforma" : "") + (puestas ? " on" : "")}
+                    onClick={() =>
+                      agregarSuelto(m, "merienda", {
+                        rotulo: "MERIENDA",
+                        acumula: true,
+                        presentacion: f,
+                      })
+                    }
+                  >
+                    {puestas > 0 && <b style={{ marginRight: 6 }}>{puestas}×</b>}
+                    {forma ? (
+                      <span className="txt">
+                        {rotulo}
+                        <em className="forma">{forma}</em>
+                      </span>
+                    ) : (
+                      rotulo
+                    )}{" "}
+                    <span className="p">{money(precio)}</span>
+                  </button>
+                );
+              });
             })}
           </div>
           </>
@@ -845,7 +884,10 @@ export default function Pedido() {
             {items.map((i) => (
               <div className="linea" key={i.id}>
                 <div className="l-top">
-                  <div className="l-desc">{i.descripcion}</div>
+                  <div className="l-desc">
+                    {i.descripcion}
+                    {i.manual && <em className="l-manual">precio especial</em>}
+                  </div>
                   {i.compo && (
                     <>
                       <button
@@ -883,10 +925,16 @@ export default function Pedido() {
                   </div>
 
                   {i.fijo ? (
-                    <span className="l-unit">{money(i.precioUnit)} c/u</span>
+                    <button
+                      className="l-unit tocable"
+                      title="Cambiar el precio solo para este pedido"
+                      onClick={() => abrirPrecio(i.id)}
+                    >
+                      {money(i.precioUnit)} c/u <span aria-hidden="true">✎</span>
+                    </button>
                   ) : (
                     <input
-                      className="l-input"
+                      className={"l-input" + (i.manual ? " manual" : "")}
                       type="number"
                       inputMode="numeric"
                       value={i.precioUnit || ""}

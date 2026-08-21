@@ -4,7 +4,7 @@ import {
   soloPrincipio,
   soloSabor,
 } from "./negocio.js";
-import { conNombre, presentacionesDe } from "./menu.js";
+import { conNombreVisible, presentacionesDe } from "./menu.js";
 import { fotoDelCombo } from "./combos.js";
 
 /**
@@ -123,13 +123,21 @@ export function hayQueElegirPresentacion(sel) {
 export function platosDeMeriendas(fijo) {
   const salida = [];
 
-  for (const f of conNombre(fijo?.meriendas)) {
+  for (const f of conNombreVisible(fijo?.meriendas)) {
+    // Sin nombre de fila, el nombre lo pone la presentación y no hay subtítulo
+    // que agregar: repetirlo debajo se vería raro.
+    const propio = (f.nombre || "").trim();
+
     for (const pres of presentacionesDe(f)) {
       if (!pres.foto) continue;
       salida.push({
         id: `merienda:${f.id}:${pres.id}`,
-        merienda: { id: f.id, nombre: f.nombre, precio: Number(f.precio) || 0 },
-        presentacion: pres,
+        merienda: {
+          id: f.id,
+          nombre: propio || pres.nombre,
+          precio: Number(pres.precio) || Number(f.precio) || 0,
+        },
+        presentacion: propio ? pres : { ...pres, nombre: "" },
         fotos: [pres.foto],
         nota: "",
       });

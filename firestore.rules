@@ -68,6 +68,11 @@ service cloud.firestore {
       allow read, write: if appIniciada();
     }
 
+    // Lista de música de fondo de las pantallas del comedor
+    match /config/musica {
+      allow read, write: if appIniciada();
+    }
+
     // PIN de acceso (solo el hash)
     match /config/acceso {
       allow read, write: if appIniciada();

@@ -6,6 +6,15 @@ import { useVersionCorta } from "../lib/version.js";
 import { useAdmin } from "../lib/admin.jsx";
 import { PLANTILLAS_DEF, VARIABLES, armarMensaje } from "../lib/fiados.js";
 import { money } from "../lib/negocio";
+import {
+  MUSICA_DEF,
+  MUSICA_ID,
+  esEnlaceDeAudio,
+  limpiarPistas,
+  nombreDesdeUrl,
+  volumenValido,
+} from "../lib/musica.js";
+import { uid } from "../lib/negocio";
 
 const OPCIONES = [
   {
@@ -289,6 +298,8 @@ export default function Ajustes() {
         </button>
       </div>
 
+      <Musica />
+
       <div className="card">
         <h2>📺 Pantalla del TV</h2>
         <p className="muted" style={{ fontSize: 14, margin: "0 0 10px" }}>
@@ -363,5 +374,132 @@ export default function Ajustes() {
 
       {ok && <div className="toast">Guardado ✓</div>}
     </>
+  );
+}
+
+/**
+ * La música de fondo del comedor.
+ *
+ * Guarda una lista de enlaces que sirve en cualquier equipo. Los archivos del
+ * propio computador se escogen desde la pantalla del TV, porque el navegador no
+ * deja guardar el permiso para volver a abrirlos.
+ */
+function Musica() {
+  const [cfg, setCfg] = useState(MUSICA_DEF);
+  const [url, setUrl] = useState("");
+  const [aviso, setAviso] = useState("");
+
+  useEffect(
+    () =>
+      onSnapshot(doc(db, "config", MUSICA_ID), (s) =>
+        setCfg(s.exists() ? { ...MUSICA_DEF, ...s.data() } : MUSICA_DEF)
+      ),
+    []
+  );
+
+  const guardar = (cambio) =>
+    setDoc(doc(db, "config", MUSICA_ID), cambio, { merge: true }).catch((e) =>
+      setAviso("No se pudo guardar: " + e.message)
+    );
+
+  const agregar = () => {
+    const limpia = url.trim();
+    if (!limpia) return;
+    if (!esEnlaceDeAudio(limpia)) {
+      setAviso(
+        "Ese enlace no es un archivo de audio. Tiene que terminar en .mp3, .m4a, .ogg… " +
+          "Los enlaces de YouTube o Spotify no sirven: esas páginas no entregan el archivo."
+      );
+      return;
+    }
+    setAviso("");
+    setUrl("");
+    guardar({
+      pistas: limpiarPistas([
+        ...(cfg.pistas || []),
+        { id: uid(), nombre: nombreDesdeUrl(limpia), url: limpia },
+      ]),
+    });
+  };
+
+  const quitar = (id) =>
+    guardar({ pistas: limpiarPistas((cfg.pistas || []).filter((p) => p.id !== id)) });
+
+  return (
+    <div className="card">
+      <h2>🎵 Música de fondo</h2>
+      <p className="muted" style={{ fontSize: 13, margin: "0 0 12px" }}>
+        Suena en las pantallas del comedor y de la cocina. La primera vez hay que
+        tocar el botón <b>▶</b> de la esquina: el navegador no deja que una página
+        arranque sonido sola.
+      </p>
+
+      <label className="switch">
+        <input
+          type="checkbox"
+          checked={!!cfg.activa}
+          onChange={(e) => guardar({ activa: e.target.checked })}
+        />
+        <span>Mostrar el control de música en las pantallas</span>
+      </label>
+
+      <div className="row" style={{ marginTop: 12 }}>
+        <span className="muted" style={{ fontSize: 13, flex: "none" }}>Volumen</span>
+        <input
+          type="range"
+          min="0"
+          max="100"
+          value={Math.round(volumenValido(cfg.volumen) * 100)}
+          onChange={(e) => guardar({ volumen: Number(e.target.value) / 100 })}
+        />
+        <span className="muted" style={{ fontSize: 13, flex: "none", minWidth: 42, textAlign: "right" }}>
+          {Math.round(volumenValido(cfg.volumen) * 100)}%
+        </span>
+      </div>
+
+      <label className="switch">
+        <input
+          type="checkbox"
+          checked={!!cfg.aleatorio}
+          onChange={(e) => guardar({ aleatorio: e.target.checked })}
+        />
+        <span>Barajar el orden</span>
+      </label>
+
+      <div className="row" style={{ marginTop: 12 }}>
+        <input
+          type="text"
+          placeholder="Pega aquí el enlace de una canción (.mp3)"
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && agregar()}
+        />
+        <button className="btn primary" onClick={agregar} disabled={!url.trim()}>
+          Agregar
+        </button>
+      </div>
+
+      {aviso && (
+        <p style={{ fontSize: 13, color: "var(--danger)", margin: "8px 0 0" }}>{aviso}</p>
+      )}
+
+      {(cfg.pistas || []).length === 0 ? (
+        <p className="empty">
+          Sin canciones guardadas. También puedes poner archivos de tu computador
+          desde el botón ♪ de la pantalla del TV.
+        </p>
+      ) : (
+        <ul className="lista-pistas">
+          {cfg.pistas.map((p) => (
+            <li key={p.id}>
+              <span className="nombre">{p.nombre}</span>
+              <button className="btn icon del" onClick={() => quitar(p.id)} aria-label="Quitar">
+                ✕
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }

@@ -87,6 +87,20 @@ export const fotoDe = (fila) => presentacionesDe(fila)[0]?.foto || "";
 export const conNombre = (arr) => (arr || []).filter((x) => x?.nombre?.trim());
 
 /**
+ * Cómo se llama la fila en pantalla.
+ *
+ * Si la fila no tiene nombre propio, manda el de su primera presentación. Pasa
+ * seguido en meriendas: el nombre de verdad es "Huevos con jamón" y ponerle
+ * además un nombre de fila sería repetirlo. Antes había que escribirle
+ * cualquier cosa —un punto— para que la fila no se perdiera.
+ */
+export const nombreVisible = (fila) =>
+  (fila?.nombre || "").trim() || (presentacionesDe(fila)[0]?.nombre || "").trim();
+
+/** Las filas que se pueden mostrar: con nombre propio o con el de su presentación. */
+export const conNombreVisible = (arr) => (arr || []).filter((x) => nombreVisible(x));
+
+/**
  * Deja del catálogo únicamente lo marcado como disponible hoy.
  *
  * Las meriendas son la excepción: son fijas, se ofrecen siempre, así que
